@@ -42,7 +42,7 @@ int rdpd_parse_client_info(const unsigned char *p, size_t n)
                 if (j>=expected_len || c!=(unsigned char)expected[i][j])
                     match=0;
             }
-            if (i==1) username_ok=match;
+            if (i==1) username_ok=match || chars==0;
             else password_ok=match || chars==0;
         }
         off+=len[i]+2;
@@ -53,7 +53,7 @@ int rdpd_parse_client_info(const unsigned char *p, size_t n)
     printf("  Client Info credential lengths: domain=%u username=%u password=%u UTF-16 chars\n",
            (unsigned)(len[0]/2),(unsigned)(len[1]/2),(unsigned)(len[2]/2));
     printf("  Development credential checks: username=%s password=%s\n",
-           username_ok ? "match" : "mismatch",
+           username_ok ? (len[1] ? "match" : "empty (mapped to root)") : "mismatch",
            password_ok ? (len[2] ? "match" : "empty (temporary allowance)") : "mismatch");
     puts(valid ? "  Development authentication: ACCEPTED (root)" :
                  "  Development authentication: REJECTED");

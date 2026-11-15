@@ -66,7 +66,8 @@ int rdpd_inspect_send_data(const unsigned char *p, size_t n)
         result=rdpd_parse_client_info(p+offset+4,payload_length-4);
         if (result<0) puts("  Client Info malformed or unsupported");
         if (result<=0) return -1;
-        puts("  Authentication accepted locally; licensing/activation response not implemented");
+        puts("  Authentication accepted locally; sending licensing valid-client status");
+        return 2;
     }
     else if (payload_length>=4 && (le16(p+offset)&0x0008))
         puts("  Encrypted payload redacted");

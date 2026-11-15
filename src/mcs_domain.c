@@ -50,7 +50,26 @@ int rdpd_mcs_domain_step(const unsigned char *p, size_t n,
         return frame(reply,4,out,cap,used);
     }
     if (*state == 2 && p[7] == 0x64) {
-        return rdpd_inspect_send_data(p,n);
+        int result=rdpd_inspect_send_data(p,n);
+        if (result==2) {
+            /* MCS SendDataIndication + SEC_LICENSE_PKT +
+               LICENSE_ERROR_MESSAGE / STATUS_VALID_CLIENT. */
+            static const unsigned char license[] = {
+                0x68,0x00,0x01,0x03,0xeb,0x70,0x14,
+                0x80,0x00,0x00,0x00,
+                0xff,0x03,0x10,0x00,
+                0x07,0x00,0x00,0x00,
+                0x02,0x00,0x00,0x00,
+                0x00,0x00,0x00,0x00
+            };
+            *state=3;
+            puts("  sending RDP licensing STATUS_VALID_CLIENT");
+            return frame(license,sizeof(license),out,cap,used);
+        }
+        return result;
+    }
+    if (*state==3 && p[7]==0x64) {
+        return rdpd_inspect_send_data(p,n)==-1 ? -1 : 0;
     }
     if (*state == 2) {
         if (p[7]!=0x38 || n!=12) return -1;

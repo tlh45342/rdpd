@@ -67,6 +67,9 @@ try:
         send_data = (bytes.fromhex("03 00 01 4f 02 f0 80 64 00 01 03 eb 70 81 40") + payload)
         assert len(send_data) == 335
         s.sendall(send_data)
+        license_reply = s.recv(128)
+        assert license_reply == bytes.fromhex("03 00 00 22 02 f0 80 68 00 01 03 eb 70 14 80 00 00 00 ff 03 10 00 07 00 00 00 02 00 00 00 00 00 00 00"), "licensing status response mismatch"
+        print("PASS: RDP licensing valid-client status response")
         # Diagnostic only: server should accept a well-framed 335-byte SendDataRequest.
         print("PASS: sent 335-byte MCS SendDataRequest diagnostic fixture")
     print("PASS: MCS Connect-Initial framed packet received")
