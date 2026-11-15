@@ -1,4 +1,5 @@
 #include "mcs_data.h"
+#include "client_info.h"
 #include <stdio.h>
 
 static unsigned be16(const unsigned char *p)
@@ -55,8 +56,18 @@ int rdpd_inspect_send_data(const unsigned char *p, size_t n)
         if (flags & 0x0008) puts("  RDP security: SEC_ENCRYPT set (unsupported)");
     } else puts("  RDP payload too short for security header");
     /* Client Info may contain usernames and passwords. Never hex-dump it. */
-    if (payload_length>=4 && (le16(p+offset)&0x0040))
+    if (payload_length>=4 && (le16(p+offset)&0x0040)) {
+        int result;
         puts("  Client Info payload redacted (may contain credentials)");
+        if (le16(p+offset)&0x0008) {
+            puts("  Client Info encrypted: cannot authenticate without decryption");
+            return -1;
+        }
+        result=rdpd_parse_client_info(p+offset+4,payload_length-4);
+        if (result<0) puts("  Client Info malformed or unsupported");
+        if (result<=0) return -1;
+        puts("  Authentication accepted locally; licensing/activation response not implemented");
+    }
     else if (payload_length>=4 && (le16(p+offset)&0x0008))
         puts("  Encrypted payload redacted");
     else dump(p+offset,payload_length);
