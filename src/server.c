@@ -1,4 +1,5 @@
 #include "rdpd.h"
+#include "protocol.h"
 #include <stdio.h>
 #ifdef _WIN32
 #include <winsock2.h>
@@ -64,6 +65,7 @@ int rdpd_serve(unsigned short port, volatile sig_atomic_t *running)
             if (client == INVALID_SOCKET) continue;
             printf("connection from %s:%u\n", inet_ntoa(peer.sin_addr), (unsigned)ntohs(peer.sin_port));
             fflush(stdout);
+            rdpd_handle_connection((uintptr_t)client);
             CLOSESOCKET(client);
         }
     }

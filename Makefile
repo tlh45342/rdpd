@@ -9,9 +9,10 @@ TARGET = rdpd
 endif
 .PHONY: all clean test
 all: $(TARGET)
-$(TARGET): src/main.c src/server.c include/rdpd.h
-	$(CC) $(CPPFLAGS) $(CFLAGS) src/main.c src/server.c -o $@ $(LDLIBS)
+$(TARGET): src/main.c src/server.c src/protocol.c include/rdpd.h include/protocol.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) src/main.c src/server.c src/protocol.c -o $@ $(LDLIBS)
 clean:
 	$(RM) rdpd rdpd.exe
 test: all
 	python tests/smoke.py
+	python tests/protocol.py
