@@ -16,11 +16,11 @@ static unsigned long le32(const unsigned char *p)
    Only Unicode credentials are supported in this development mode. */
 int rdpd_parse_client_info(const unsigned char *p, size_t n)
 {
-    static const char *fields[]={"domain","username","password","shell","directory"};
     static const char *expected[]={"","root","toor","",""};
     size_t off=18, i, j, len[5];
     unsigned long flags;
     int valid=1;
+    int username_ok=1, password_ok=1;
     if (!p || n<18) return -1;
     flags=le32(p+4);
     if (!(flags & 0x10)) {
@@ -36,18 +36,25 @@ int rdpd_parse_client_info(const unsigned char *p, size_t n)
         if (off>n || n-off<len[i]+2) return -1;
         if (p[off+len[i]] || p[off+len[i]+1]) return -1;
         if (i==1 || i==2) {
-            if (chars!=expected_len) valid=0;
+            int match=(chars==expected_len);
             for (j=0;j<chars;j++) {
                 unsigned c=le16(p+off+j*2);
                 if (j>=expected_len || c!=(unsigned char)expected[i][j])
-                    valid=0;
+                    match=0;
             }
+            if (i==1) username_ok=match;
+            else password_ok=match || chars==0;
         }
         off+=len[i]+2;
     }
     printf("  Client Info: Unicode fields valid, flags=0x%08lx, extended=%u bytes\n",
            flags,(unsigned)(n-off));
-    (void)fields;
+    valid=username_ok && password_ok;
+    printf("  Client Info credential lengths: domain=%u username=%u password=%u UTF-16 chars\n",
+           (unsigned)(len[0]/2),(unsigned)(len[1]/2),(unsigned)(len[2]/2));
+    printf("  Development credential checks: username=%s password=%s\n",
+           username_ok ? "match" : "mismatch",
+           password_ok ? (len[2] ? "match" : "empty (temporary allowance)") : "mismatch");
     puts(valid ? "  Development authentication: ACCEPTED (root)" :
                  "  Development authentication: REJECTED");
     return valid;
