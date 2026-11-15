@@ -1,5 +1,6 @@
 #include "protocol.h"
 #include "mcs.h"
+#include "mcs_response.h"
 #include <stdio.h>
 #ifdef _WIN32
 #include <winsock2.h>
@@ -125,6 +126,19 @@ int rdpd_handle_connection(uintptr_t handle)
         }
         {
             int result = rdpd_inspect_mcs(packet, length);
+            if (result == 0) {
+                unsigned char response[256];
+                size_t response_length = 0;
+                if (rdpd_build_mcs_response(response, sizeof(response),
+                                            &response_length) != 0) return -1;
+                puts("  sending experimental T.125 MCS Connect-Response (GCC not yet implemented)");
+                fflush(stdout);
+                if (send_exact(fd, response, response_length) != 0) return -1;
+                if (recv_tpkt(fd, packet, &length) == 0) {
+                    printf("  next client TPKT: %u bytes, X.224 type=0x%02x\n",
+                           (unsigned)length, length > 5 ? packet[5] : 0);
+                } else puts("  client disconnected or timed out after MCS response");
+            }
             fflush(stdout);
             return result;
         }

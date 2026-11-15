@@ -39,7 +39,9 @@ try:
         s.sendall(legacy)
         assert s.recv(128) == confirm
         s.sendall(mcs)
-        assert s.recv(1) == b"", "server did not finish MCS inspection"
+        response = s.recv(256)
+        assert response[:2] == bytes.fromhex("03 00") and response[7:9] == bytes.fromhex("7f 66"), "MCS Connect-Response missing"
+        print("PASS: experimental MCS Connect-Response received")
     print("PASS: MCS Connect-Initial framed packet received")
 
     malformed_mcs = bytes.fromhex("03 00 00 0b 02 f0 80 7f 65 02 00")
