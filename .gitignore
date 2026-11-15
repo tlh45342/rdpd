@@ -1,0 +1,4 @@
+rdpd
+rdpd.exe
+*.o
+__pycache__/
