@@ -3,7 +3,7 @@
 Experimental C RDP daemon. Version 0.0.1 build 0001.
 
 Sprint 001 implements only a TCP connection listener; it is **not yet an RDP server**.
-For safety it listens on loopback (127.0.0.1), TCP port 3389 by default.
+It listens on all IPv4 interfaces (0.0.0.0), TCP port 3389 by default. This prototype has no authentication; use only on a trusted network and do not expose it to the public internet.
 
 Build: `make` (MinGW GCC on Windows, or GCC/Clang on POSIX).
 

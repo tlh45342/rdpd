@@ -35,13 +35,13 @@ int rdpd_serve(unsigned short port, volatile sig_atomic_t *running)
     }
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
-    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
     if (bind(listener, (struct sockaddr *)&addr, sizeof(addr)) == SOCKET_ERROR) {
         fprintf(stderr, "bind failed (port %u)\n", (unsigned)port);
         goto close_listener;
     }
     if (listen(listener, 8) == SOCKET_ERROR) { fprintf(stderr, "listen failed\n"); goto close_listener; }
-    printf("listening on 127.0.0.1:%u (Ctrl+C to stop)\n", (unsigned)port);
+    printf("listening on 0.0.0.0:%u (Ctrl+C to stop)\n", (unsigned)port);
     fflush(stdout);
     result = 0;
     while (*running) {
