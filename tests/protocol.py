@@ -32,6 +32,25 @@ try:
     assert request(legacy) == confirm, "legacy X.224 confirmation mismatch"
     print("PASS: legacy X.224 confirmation")
 
+    # Two-byte BER length (128 payload bytes) exercises TPKT and MCS framing.
+    mcs = bytes.fromhex("03 00 00 8b 02 f0 80 7f 65 81 80") + bytes(128)
+    with socket.create_connection(("127.0.0.1", port), timeout=3) as s:
+        s.settimeout(4)
+        s.sendall(legacy)
+        assert s.recv(128) == confirm
+        s.sendall(mcs)
+        assert s.recv(1) == b"", "server did not finish MCS inspection"
+    print("PASS: MCS Connect-Initial framed packet received")
+
+    malformed_mcs = bytes.fromhex("03 00 00 0b 02 f0 80 7f 65 02 00")
+    with socket.create_connection(("127.0.0.1", port), timeout=3) as s:
+        s.settimeout(4)
+        s.sendall(legacy)
+        assert s.recv(128) == confirm
+        s.sendall(malformed_mcs)
+        assert s.recv(1) == b"", "malformed MCS not rejected"
+    print("PASS: malformed MCS BER length rejected")
+
     tls = bytes.fromhex("03 00 00 13 0e e0 00 00 00 00 00 01 00 08 00 03 00 00 00")
     failure = bytes.fromhex("03 00 00 13 0e d0 00 00 00 00 00 03 00 08 00 02 00 00 00")
     assert request(tls) == failure, "unsupported TLS negotiation not rejected"

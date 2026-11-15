@@ -9,8 +9,8 @@ TARGET = rdpd
 endif
 .PHONY: all clean test
 all: $(TARGET)
-$(TARGET): src/main.c src/server.c src/protocol.c include/rdpd.h include/protocol.h
-	$(CC) $(CPPFLAGS) $(CFLAGS) src/main.c src/server.c src/protocol.c -o $@ $(LDLIBS)
+$(TARGET): src/main.c src/server.c src/protocol.c src/mcs.c include/rdpd.h include/protocol.h include/mcs.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) src/main.c src/server.c src/protocol.c src/mcs.c -o $@ $(LDLIBS)
 clean:
 	$(RM) rdpd rdpd.exe
 test: all

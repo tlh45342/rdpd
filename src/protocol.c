@@ -1,4 +1,5 @@
 #include "protocol.h"
+#include "mcs.h"
 #include <stdio.h>
 #ifdef _WIN32
 #include <winsock2.h>
@@ -11,7 +12,19 @@ typedef SOCKET net_socket;
 typedef int net_socket;
 #endif
 
-#define MAX_TPKT 4096
+#define MAX_TPKT 16384
+static int recv_exact(net_socket fd, unsigned char *p, size_t n);
+
+static int recv_tpkt(net_socket fd, unsigned char *packet, size_t *length)
+{
+    size_t n;
+    if (recv_exact(fd, packet, 4) != 0) return -1;
+    n = ((size_t)packet[2] << 8) | packet[3];
+    if (packet[0] != 3 || packet[1] != 0 || n < 7 || n > MAX_TPKT) return -2;
+    if (recv_exact(fd, packet + 4, n - 4) != 0) return -1;
+    *length = n;
+    return 0;
+}
 
 static int recv_exact(net_socket fd, unsigned char *p, size_t n)
 {
@@ -81,14 +94,7 @@ int rdpd_handle_connection(uintptr_t handle)
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
     setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
 #endif
-    if (recv_exact(fd, packet, 4) != 0) {
-        puts("  no complete TPKT header"); return -1;
-    }
-    length = ((size_t)packet[2] << 8) | packet[3];
-    if (length < 11 || length > MAX_TPKT) {
-        printf("  invalid TPKT length: %u\n", (unsigned)length); return -1;
-    }
-    if (recv_exact(fd, packet + 4, length - 4) != 0 ||
+    if (recv_tpkt(fd, packet, &length) != 0 ||
         rdpd_parse_x224(packet, length, &protocols) != 0) {
         puts("  invalid X.224 Connection Request"); return -1;
     }
@@ -109,6 +115,18 @@ int rdpd_handle_connection(uintptr_t handle)
         };
         puts("  sending X.224 Connection Confirm (legacy RDP security)");
         fflush(stdout);
-        return send_exact(fd, confirm, sizeof(confirm));
+        if (send_exact(fd, confirm, sizeof(confirm)) != 0) return -1;
+        puts("  waiting for MCS Connect-Initial (3 second timeout)");
+        fflush(stdout);
+        if (recv_tpkt(fd, packet, &length) != 0) {
+            puts("  MCS receive timeout, disconnect, or invalid TPKT");
+            fflush(stdout);
+            return -1;
+        }
+        {
+            int result = rdpd_inspect_mcs(packet, length);
+            fflush(stdout);
+            return result;
+        }
     }
 }
