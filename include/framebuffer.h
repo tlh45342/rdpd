@@ -2,6 +2,8 @@
 #define RDPD_FRAMEBUFFER_H
 #include <stddef.h>
 #define RDPD_WIDTH 800
+void rdpd_framebuffer_clear(unsigned short color);
+void rdpd_framebuffer_rect(int x,int y,int width,int height,unsigned short color);
 #define RDPD_HEIGHT 600
 #define RDPD_TILE_WIDTH 64
 #define RDPD_TILE_HEIGHT 32

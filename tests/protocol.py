@@ -124,10 +124,20 @@ try:
             assert (left,top) == ((tile % 13)*64,(tile // 13)*32)
             assert right == left+width-1 and bottom == top+height-1
             assert bpp == 16 and flags == 0 and bitmap_len == width*height*2
-            assert share[40:] == bytes.fromhex("1f 00")*(width*height), "blue RGB565 pixel mismatch"
+            assert len(share[40:]) == bitmap_len, "bitmap pixel length mismatch"
+            if left <= 200 < left+width and top <= 200 < top+height:
+                pixel = ((top+height-1-200)*width+(200-left))*2
+                assert share[40+pixel:42+pixel] == bytes.fromhex("ff ff"), "white window background missing"
             rectangles.append((left,top,width,height))
         assert sum(w*h for _,_,w,h in rectangles) == 800*600
-        print("PASS: 247 blue bitmap tiles reconstruct 800x600 framebuffer")
+        print("PASS: 247 desktop bitmap tiles reconstruct 800x600 framebuffer")
+        mouse = (bytes(4) + (0x8001).to_bytes(2,"little") +
+                 (0x9000).to_bytes(2,"little") +
+                 (390).to_bytes(2,"little") + (340).to_bytes(2,"little"))
+        s.sendall(share_data(28,(1).to_bytes(2,"little")+bytes(2)+mouse))
+        refreshed = [receive_tpkt(s) for _ in range(247)]
+        assert all(f[7] == 0x68 and f[15+14] == 2 for f in refreshed)
+        print("PASS: mouse click triggers framebuffer redraw")
         # Diagnostic only: server should accept a well-framed 335-byte SendDataRequest.
         print("PASS: sent 335-byte MCS SendDataRequest diagnostic fixture")
     print("PASS: MCS Connect-Initial framed packet received")

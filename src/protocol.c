@@ -142,14 +142,21 @@ int rdpd_handle_connection(uintptr_t handle)
                 if (send_exact(fd, response, response_length) != 0) return -1;
                 {
                     int state = 0;
+                    unsigned input_packets=0;
                     for (;;) {
                         int status;
                         if (recv_tpkt(fd, packet, &length) != 0) {
                             puts("  MCS domain receive ended (disconnect/timeout)");
                             break;
                         }
-                        printf("  next client TPKT: %u bytes, MCS opcode=0x%02x\n",
-                               (unsigned)length, length > 7 ? packet[7] : 0);
+                        if (state!=7 || length<16 || packet[7]!=0x64 || packet[14]!=0x17)
+                            printf("  next client TPKT: %u bytes, MCS opcode=0x%02x\n",
+                                   (unsigned)length, length > 7 ? packet[7] : 0);
+                        if (state==7) input_packets++;
+                        if (length>=8 && packet[7]==0x21) {
+                            puts("  MCS Disconnect Provider Ultimatum received");
+                            break;
+                        }
                         status = rdpd_mcs_domain_step(packet, length,
                                   response, sizeof(response), &response_length, &state);
                         if (status < 0) {
@@ -160,17 +167,19 @@ int rdpd_handle_connection(uintptr_t handle)
                             puts("  failed to send MCS domain response");
                             break;
                         }
-                        if (state==6) {
+                        if (state==6 || state==8) {
                             unsigned i;
-                            for (i=0;i<4;i++) {
+                            if (state==6) for (i=0;i<4;i++) {
                                 if (rdpd_build_finalization(i,response,sizeof(response),&response_length)!=0 ||
                                     send_exact(fd,response,response_length)!=0) {
                                     puts("  failed to send connection finalization");
                                     return -1;
                                 }
                             }
-                            puts("  Server Synchronize, Control Cooperate, Control Granted, Font Map sent");
-                            puts("  RDP session ACTIVE (synthetic desktop)");
+                            if (state==6) {
+                                puts("  Server Synchronize, Control Cooperate, Control Granted, Font Map sent");
+                                puts("  RDP session ACTIVE (synthetic desktop)");
+                            }
                             state=7;
                             {
                                 unsigned char bitmap_packet[8192];
@@ -205,7 +214,7 @@ int rdpd_handle_connection(uintptr_t handle)
                             state=4;
                         }
                     }
-
+                    if (input_packets) printf("  post-activation packets: %u\n",input_packets);
                 }
             }
             fflush(stdout);

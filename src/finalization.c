@@ -1,4 +1,5 @@
 #include "finalization.h"
+#include "desktop.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -35,7 +36,23 @@ int rdpd_inspect_finalization(const unsigned char *p,size_t n)
         printf("  Client Control received: action=%u\n",u16(s+18));
         break;
     case 39: puts("  Client Font List received");return 1;
-    case 28: puts("  Client Input received");break;
+    case 28:
+        if (len>=22) {
+            unsigned count=u16(s+18),i;
+            if (count<256 && len>=22+(size_t)count*12) {
+                for (i=0;i<count;i++) {
+                    const unsigned char *event=s+22+(size_t)i*12;
+                    unsigned message=u16(event+4),flags=u16(event+6);
+                    if (message==0x8001 && (flags&0x9000)==0x9000) {
+                        rdpd_desktop_click(u16(event+8),u16(event+10));
+                        puts("  Desktop mouse click received");
+                        return 2;
+                    }
+                }
+            }
+        }
+        break;
+    case 36: puts("  Client Shutdown Request received");break;
     default: printf("  Client Share Data subtype=%u\n",subtype);break;
     }
     return 0;
