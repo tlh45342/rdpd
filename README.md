@@ -12,3 +12,6 @@ Run: `./rdpd` or `rdpd.exe`; optional port argument: `rdpd.exe 3390`.
 Test: `make test` (requires Python 3).
 
 Next: X.224/TPKT RDP negotiation.
+
+
+https://github.com/tlh45342/rdpd/
