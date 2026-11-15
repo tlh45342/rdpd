@@ -44,9 +44,11 @@ int rdpd_inspect_finalization(const unsigned char *p,size_t n)
                     const unsigned char *event=s+22+(size_t)i*12;
                     unsigned message=u16(event+4),flags=u16(event+6);
                     if (message==0x8001 && (flags&0x9000)==0x9000) {
-                        rdpd_desktop_click(u16(event+8),u16(event+10));
-                        puts("  Desktop mouse click received");
-                        return 2;
+                        unsigned x=u16(event+8),y=u16(event+10);
+                        int changed=rdpd_desktop_click(x,y);
+                        printf("  Mouse down at (%u,%u): %s\n",
+                               x,y,changed?"button activated":"outside button");
+                        if (changed) return 2;
                     }
                 }
             }

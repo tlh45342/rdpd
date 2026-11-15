@@ -137,7 +137,18 @@ try:
         s.sendall(share_data(28,(1).to_bytes(2,"little")+bytes(2)+mouse))
         refreshed = [receive_tpkt(s) for _ in range(247)]
         assert all(f[7] == 0x68 and f[15+14] == 2 for f in refreshed)
-        print("PASS: mouse click triggers framebuffer redraw")
+        def pixel_at(frames,x,y):
+            tile=(y//32)*13+(x//64)
+            share=frames[tile][15:]
+            rect=share[22:40]
+            left=int.from_bytes(rect[0:2],"little")
+            top=int.from_bytes(rect[2:4],"little")
+            width=int.from_bytes(rect[8:10],"little")
+            height=int.from_bytes(rect[10:12],"little")
+            off=40+((top+height-1-y)*width+x-left)*2
+            return int.from_bytes(share[off:off+2],"little")
+        assert pixel_at(refreshed,280,320)==0x07e0, "button did not change color"
+        print("PASS: mouse click changes button pixels and triggers redraw")
         # Diagnostic only: server should accept a well-framed 335-byte SendDataRequest.
         print("PASS: sent 335-byte MCS SendDataRequest diagnostic fixture")
     print("PASS: MCS Connect-Initial framed packet received")

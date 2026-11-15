@@ -149,7 +149,7 @@ int rdpd_handle_connection(uintptr_t handle)
                             puts("  MCS domain receive ended (disconnect/timeout)");
                             break;
                         }
-                        if (state!=7 || length<16 || packet[7]!=0x64 || packet[14]!=0x17)
+                        if (state!=7 || length<16 || packet[7]!=0x64 || (packet[13]&0x80)==0 || packet[15]!=0x17)
                             printf("  next client TPKT: %u bytes, MCS opcode=0x%02x\n",
                                    (unsigned)length, length > 7 ? packet[7] : 0);
                         if (state==7) input_packets++;

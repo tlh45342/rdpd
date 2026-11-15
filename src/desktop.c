@@ -56,10 +56,12 @@ void rdpd_desktop_draw(void)
     text(322,330,clicked?"CLICKED":"CLICK ME",0xffff);
     text(150,570,"RDPD 0.0.1",0xffff);
 }
-void rdpd_desktop_click(unsigned x,unsigned y)
+int rdpd_desktop_click(unsigned x,unsigned y)
 {
     if (x>=270 && x<530 && y>=310 && y<364) {
         clicked=!clicked;
         rdpd_desktop_draw();
+        return 1;
     }
+    return 0;
 }
