@@ -5,6 +5,7 @@
 #include "mcs_domain.h"
 #include "activation.h"
 #include "finalization.h"
+#include "framebuffer.h"
 #include <stdio.h>
 #ifdef _WIN32
 #include <winsock2.h>
@@ -169,8 +170,23 @@ int rdpd_handle_connection(uintptr_t handle)
                                 }
                             }
                             puts("  Server Synchronize, Control Cooperate, Control Granted, Font Map sent");
-                            puts("  RDP session ACTIVE (synthetic desktop; graphics not implemented)");
+                            puts("  RDP session ACTIVE (synthetic desktop)");
                             state=7;
+                            {
+                                unsigned char bitmap_packet[8192];
+                                unsigned tile;
+                                size_t bitmap_length;
+                                for (tile=0;tile<RDPD_TILE_COUNT;tile++) {
+                                    if (rdpd_build_bitmap_tile(tile,bitmap_packet,sizeof(bitmap_packet),&bitmap_length)!=0 ||
+                                        send_exact(fd,bitmap_packet,bitmap_length)!=0) {
+                                        puts("  failed to send framebuffer tile");
+                                        return -1;
+                                    }
+                                }
+                                printf("  framebuffer sent: %ux%u RGB565, %u bitmap rectangles\n",
+                                       RDPD_WIDTH,RDPD_HEIGHT,RDPD_TILE_COUNT);
+                                fflush(stdout);
+                            }
 #ifdef _WIN32
                             { DWORD idle=30000;
                               setsockopt(fd,SOL_SOCKET,SO_RCVTIMEO,(const char *)&idle,sizeof(idle)); }

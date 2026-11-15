@@ -108,6 +108,26 @@ try:
             response = receive_tpkt(s)
             assert response[7] == 0x68 and response[14+14] == subtype, "finalization PDU mismatch"
         print("PASS: four server connection-finalization PDUs")
+        rectangles = []
+        for tile in range(13 * 19):
+            frame = receive_tpkt(s)
+            assert frame[7] == 0x68, "bitmap MCS SendDataIndication missing"
+            assert frame[13] & 0x80, "bitmap PER two-byte length missing"
+            data_len = ((frame[13] & 127) << 8) | frame[14]
+            assert data_len == len(frame)-15, "bitmap PER length mismatch"
+            share = frame[15:]
+            assert int.from_bytes(share[0:2], "little") == len(share)
+            assert share[14] == 2 and share[18:22] == bytes.fromhex("01 00 01 00"), "bitmap update header invalid"
+            rect = share[22:40]
+            left,top,right,bottom,width,height,bpp,flags,bitmap_len = [
+                int.from_bytes(rect[i:i+2],"little") for i in range(0,18,2)]
+            assert (left,top) == ((tile % 13)*64,(tile // 13)*32)
+            assert right == left+width-1 and bottom == top+height-1
+            assert bpp == 16 and flags == 0 and bitmap_len == width*height*2
+            assert share[40:] == bytes.fromhex("1f 00")*(width*height), "blue RGB565 pixel mismatch"
+            rectangles.append((left,top,width,height))
+        assert sum(w*h for _,_,w,h in rectangles) == 800*600
+        print("PASS: 247 blue bitmap tiles reconstruct 800x600 framebuffer")
         # Diagnostic only: server should accept a well-framed 335-byte SendDataRequest.
         print("PASS: sent 335-byte MCS SendDataRequest diagnostic fixture")
     print("PASS: MCS Connect-Initial framed packet received")
