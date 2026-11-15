@@ -67,9 +67,32 @@ try:
         send_data = (bytes.fromhex("03 00 01 4f 02 f0 80 64 00 01 03 eb 70 81 40") + payload)
         assert len(send_data) == 335
         s.sendall(send_data)
-        license_reply = s.recv(128)
+        def receive_tpkt(sock):
+            def exact(count):
+                data = bytearray()
+                while len(data) < count:
+                    chunk = sock.recv(count - len(data))
+                    if not chunk:
+                        raise EOFError("TPKT truncated")
+                    data.extend(chunk)
+                return bytes(data)
+            header = exact(4)
+            size = int.from_bytes(header[2:4], "big")
+            assert header[:2] == bytes.fromhex("03 00") and size >= 7
+            return header + exact(size - 4)
+        license_reply = receive_tpkt(s)
         assert license_reply == bytes.fromhex("03 00 00 22 02 f0 80 68 00 01 03 eb 70 14 80 00 00 00 ff 03 10 00 07 00 00 00 02 00 00 00 00 00 00 00"), "licensing status response mismatch"
         print("PASS: RDP licensing valid-client status response")
+        demand = receive_tpkt(s)
+        assert demand[:2] == bytes.fromhex("03 00"), "Demand Active TPKT signature mismatch"
+        assert demand[7] == 0x68 and demand[14+2:14+4] == bytes.fromhex("11 00"), "Server Demand Active missing"
+        assert int.from_bytes(demand[2:4], "big") == len(demand), "Demand Active TPKT length mismatch"
+        assert int.from_bytes(demand[14:16], "little") == len(demand)-14, "Demand Active share length mismatch"
+        print("PASS: Server Demand Active framed with capabilities")
+        confirm_share = (bytes.fromhex("14 00 13 00 ea 03") + bytes.fromhex("ea 03 01 00") + bytes(4) + bytes(6))
+        confirm_mcs = bytes.fromhex("64 00 01 03 eb 70") + bytes([len(confirm_share)]) + confirm_share
+        s.sendall(bytes.fromhex("03 00") + (len(confirm_mcs)+7).to_bytes(2,"big") + bytes.fromhex("02 f0 80") + confirm_mcs)
+        print("PASS: sent synthetic Client Confirm Active")
         # Diagnostic only: server should accept a well-framed 335-byte SendDataRequest.
         print("PASS: sent 335-byte MCS SendDataRequest diagnostic fixture")
     print("PASS: MCS Connect-Initial framed packet received")
@@ -96,6 +119,7 @@ finally:
     assert "MCS SendDataRequest: initiator=1002 channel=1003" in out, "SendDataRequest not decoded"
     assert "SEC_INFO_PKT candidate" in out, "RDP security header not inspected"
     assert "Development authentication: ACCEPTED (root)" in out, "valid development login not accepted"
+    assert "Client Confirm Active:" in out, "synthetic Confirm Active not parsed"
     print(out)
     if err:
         print(err)

@@ -3,6 +3,7 @@
 #include "mcs_response.h"
 #include "gcc.h"
 #include "mcs_domain.h"
+#include "activation.h"
 #include <stdio.h>
 #ifdef _WIN32
 #include <winsock2.h>
@@ -156,6 +157,15 @@ int rdpd_handle_connection(uintptr_t handle)
                         if (status > 0 && send_exact(fd, response, response_length) != 0) {
                             puts("  failed to send MCS domain response");
                             break;
+                        }
+                        if (state==3 && status>0) {
+                            if (rdpd_build_demand_active(response,sizeof(response),&response_length)!=0 ||
+                                send_exact(fd,response,response_length)!=0) {
+                                puts("  failed to send Server Demand Active");
+                                break;
+                            }
+                            puts("  Server Demand Active sent (800x600, 16bpp)");
+                            state=4;
                         }
                     }
                     if (steps == 12) puts("  MCS domain diagnostic packet limit reached");

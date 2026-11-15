@@ -1,5 +1,6 @@
 #include "mcs_domain.h"
 #include "mcs_data.h"
+#include "activation.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -67,6 +68,17 @@ int rdpd_mcs_domain_step(const unsigned char *p, size_t n,
             return frame(license,sizeof(license),out,cap,used);
         }
         return result;
+    }
+    if (*state==4 && p[7]==0x64) {
+        int confirm=rdpd_inspect_confirm_active(p,n);
+        if (confirm==1) { *state=5; return 0; }
+        if (confirm<0) return -1;
+        puts("  awaiting Client Confirm Active");
+        return 0;
+    }
+    if (*state==5 && p[7]==0x64) {
+        puts("  post-activation client data received");
+        return 0;
     }
     if (*state==3 && p[7]==0x64) {
         return rdpd_inspect_send_data(p,n)==-1 ? -1 : 0;
