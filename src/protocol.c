@@ -2,6 +2,7 @@
 #include "mcs.h"
 #include "mcs_response.h"
 #include "gcc.h"
+#include "mcs_domain.h"
 #include <stdio.h>
 #ifdef _WIN32
 #include <winsock2.h>
@@ -136,10 +137,29 @@ int rdpd_handle_connection(uintptr_t handle)
                 puts("  sending MCS Connect-Response with GCC server core/security/network");
                 fflush(stdout);
                 if (send_exact(fd, response, response_length) != 0) return -1;
-                if (recv_tpkt(fd, packet, &length) == 0) {
-                    printf("  next client TPKT: %u bytes, X.224 type=0x%02x\n",
-                           (unsigned)length, length > 5 ? packet[5] : 0);
-                } else puts("  client disconnected or timed out after MCS response");
+                {
+                    int state = 0, steps;
+                    for (steps = 0; steps < 12; ++steps) {
+                        int status;
+                        if (recv_tpkt(fd, packet, &length) != 0) {
+                            puts("  MCS domain receive ended (disconnect/timeout)");
+                            break;
+                        }
+                        printf("  next client TPKT: %u bytes, MCS opcode=0x%02x\n",
+                               (unsigned)length, length > 7 ? packet[7] : 0);
+                        status = rdpd_mcs_domain_step(packet, length,
+                                  response, sizeof(response), &response_length, &state);
+                        if (status < 0) {
+                            puts("  unexpected or unsupported MCS domain packet");
+                            break;
+                        }
+                        if (status > 0 && send_exact(fd, response, response_length) != 0) {
+                            puts("  failed to send MCS domain response");
+                            break;
+                        }
+                    }
+                    if (steps == 12) puts("  MCS domain diagnostic packet limit reached");
+                }
             }
             fflush(stdout);
             return result;

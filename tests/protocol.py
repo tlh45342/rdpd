@@ -47,6 +47,14 @@ try:
         assert bytes.fromhex("03 0c 08 00 eb 03") in response, "SC_NET missing"
         assert len(response) == int.from_bytes(response[2:4], "big"), "TPKT length incorrect"
         print("PASS: MCS Connect-Response GCC server blocks and TPKT length")
+        s.sendall(bytes.fromhex("03 00 00 0c 02 f0 80 04 01 00 01 00"))
+        s.sendall(bytes.fromhex("03 00 00 08 02 f0 80 28"))
+        assert s.recv(11) == bytes.fromhex("03 00 00 0b 02 f0 80 2e 00 00 01"), "AttachUserConfirm incorrect"
+        s.sendall(bytes.fromhex("03 00 00 0c 02 f0 80 38 00 01 03 ea"))
+        assert s.recv(15) == bytes.fromhex("03 00 00 0f 02 f0 80 3e 00 00 01 03 ea 03 ea"), "User channel confirm incorrect"
+        s.sendall(bytes.fromhex("03 00 00 0c 02 f0 80 38 00 01 03 eb"))
+        assert s.recv(15) == bytes.fromhex("03 00 00 0f 02 f0 80 3e 00 00 01 03 eb 03 eb"), "Global channel confirm incorrect"
+        print("PASS: MCS erect, attach user, and channel joins")
     print("PASS: MCS Connect-Initial framed packet received")
 
     malformed_mcs = bytes.fromhex("03 00 00 0b 02 f0 80 7f 65 02 00")
