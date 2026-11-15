@@ -167,7 +167,7 @@ int rdpd_handle_connection(uintptr_t handle)
                             puts("  failed to send MCS domain response");
                             break;
                         }
-                        if (state==6 || state==8) {
+                        if (state==6 || (state==7 && status==2)) {
                             unsigned i;
                             if (state==6) for (i=0;i<4;i++) {
                                 if (rdpd_build_finalization(i,response,sizeof(response),&response_length)!=0 ||
@@ -179,8 +179,10 @@ int rdpd_handle_connection(uintptr_t handle)
                             if (state==6) {
                                 puts("  Server Synchronize, Control Cooperate, Control Granted, Font Map sent");
                                 puts("  RDP session ACTIVE (synthetic desktop)");
+                                state=7;
+                            } else {
+                                puts("  Button changed: sending framebuffer update");
                             }
-                            state=7;
                             {
                                 unsigned char bitmap_packet[8192];
                                 unsigned tile;

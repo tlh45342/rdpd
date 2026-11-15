@@ -81,6 +81,7 @@ int rdpd_mcs_domain_step(const unsigned char *p, size_t n,
         int kind=rdpd_inspect_finalization(p,n);
         if (kind<0) return -1;
         if (kind==1 && *state==5) { *state=6; puts("  Client Font List: finalizing RDP session"); }
+        if (kind==2 && *state==7) return 2;
         return 0;
     }
     if (*state==3 && p[7]==0x64) {
