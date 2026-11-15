@@ -1,4 +1,5 @@
 #include "mcs_domain.h"
+#include "mcs_data.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -47,6 +48,9 @@ int rdpd_mcs_domain_step(const unsigned char *p, size_t n,
         *state=2;
         puts("  MCS AttachUserConfirm: result=success userId=1002");
         return frame(reply,4,out,cap,used);
+    }
+    if (*state == 2 && p[7] == 0x64) {
+        return rdpd_inspect_send_data(p,n);
     }
     if (*state == 2) {
         if (p[7]!=0x38 || n!=12) return -1;

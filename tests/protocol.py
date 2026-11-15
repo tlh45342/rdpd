@@ -55,6 +55,12 @@ try:
         s.sendall(bytes.fromhex("03 00 00 0c 02 f0 80 38 00 01 03 eb"))
         assert s.recv(15) == bytes.fromhex("03 00 00 0f 02 f0 80 3e 00 00 01 03 eb 03 eb"), "Global channel confirm incorrect"
         print("PASS: MCS erect, attach user, and channel joins")
+        payload = bytes.fromhex("40 00 00 00") + bytes(316)
+        send_data = (bytes.fromhex("03 00 01 4f 02 f0 80 64 00 01 03 eb 70 81 40") + payload)
+        assert len(send_data) == 335
+        s.sendall(send_data)
+        # Diagnostic only: server should accept a well-framed 335-byte SendDataRequest.
+        print("PASS: sent 335-byte MCS SendDataRequest diagnostic fixture")
     print("PASS: MCS Connect-Initial framed packet received")
 
     malformed_mcs = bytes.fromhex("03 00 00 0b 02 f0 80 7f 65 02 00")
@@ -76,6 +82,8 @@ try:
 finally:
     p.terminate()
     out, err = p.communicate(timeout=6)
+    assert "MCS SendDataRequest: initiator=1002 channel=1003" in out, "SendDataRequest not decoded"
+    assert "SEC_INFO_PKT candidate" in out, "RDP security header not inspected"
     print(out)
     if err:
         print(err)
