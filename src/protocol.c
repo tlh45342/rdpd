@@ -4,6 +4,7 @@
 #include "gcc.h"
 #include "mcs_domain.h"
 #include "activation.h"
+#include "finalization.h"
 #include <stdio.h>
 #ifdef _WIN32
 #include <winsock2.h>
@@ -139,8 +140,8 @@ int rdpd_handle_connection(uintptr_t handle)
                 fflush(stdout);
                 if (send_exact(fd, response, response_length) != 0) return -1;
                 {
-                    int state = 0, steps;
-                    for (steps = 0; steps < 12; ++steps) {
+                    int state = 0;
+                    for (;;) {
                         int status;
                         if (recv_tpkt(fd, packet, &length) != 0) {
                             puts("  MCS domain receive ended (disconnect/timeout)");
@@ -158,6 +159,26 @@ int rdpd_handle_connection(uintptr_t handle)
                             puts("  failed to send MCS domain response");
                             break;
                         }
+                        if (state==6) {
+                            unsigned i;
+                            for (i=0;i<4;i++) {
+                                if (rdpd_build_finalization(i,response,sizeof(response),&response_length)!=0 ||
+                                    send_exact(fd,response,response_length)!=0) {
+                                    puts("  failed to send connection finalization");
+                                    return -1;
+                                }
+                            }
+                            puts("  Server Synchronize, Control Cooperate, Control Granted, Font Map sent");
+                            puts("  RDP session ACTIVE (synthetic desktop; graphics not implemented)");
+                            state=7;
+#ifdef _WIN32
+                            { DWORD idle=30000;
+                              setsockopt(fd,SOL_SOCKET,SO_RCVTIMEO,(const char *)&idle,sizeof(idle)); }
+#else
+                            { struct timeval idle={30,0};
+                              setsockopt(fd,SOL_SOCKET,SO_RCVTIMEO,&idle,sizeof(idle)); }
+#endif
+                        }
                         if (state==3 && status>0) {
                             if (rdpd_build_demand_active(response,sizeof(response),&response_length)!=0 ||
                                 send_exact(fd,response,response_length)!=0) {
@@ -168,7 +189,7 @@ int rdpd_handle_connection(uintptr_t handle)
                             state=4;
                         }
                     }
-                    if (steps == 12) puts("  MCS domain diagnostic packet limit reached");
+
                 }
             }
             fflush(stdout);

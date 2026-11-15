@@ -1,6 +1,7 @@
 #include "mcs_domain.h"
 #include "mcs_data.h"
 #include "activation.h"
+#include "finalization.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -76,8 +77,10 @@ int rdpd_mcs_domain_step(const unsigned char *p, size_t n,
         puts("  awaiting Client Confirm Active");
         return 0;
     }
-    if (*state==5 && p[7]==0x64) {
-        puts("  post-activation client data received");
+    if (*state>=5 && p[7]==0x64) {
+        int kind=rdpd_inspect_finalization(p,n);
+        if (kind<0) return -1;
+        if (kind==1 && *state==5) { *state=6; puts("  Client Font List: finalizing RDP session"); }
         return 0;
     }
     if (*state==3 && p[7]==0x64) {

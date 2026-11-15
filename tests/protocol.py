@@ -93,6 +93,21 @@ try:
         confirm_mcs = bytes.fromhex("64 00 01 03 eb 70") + bytes([len(confirm_share)]) + confirm_share
         s.sendall(bytes.fromhex("03 00") + (len(confirm_mcs)+7).to_bytes(2,"big") + bytes.fromhex("02 f0 80") + confirm_mcs)
         print("PASS: sent synthetic Client Confirm Active")
+        def share_data(subtype, body):
+            length = 18 + len(body)
+            share = (length.to_bytes(2,"little") + bytes.fromhex("17 00 ea 03 ea 03 01 00") +
+                     bytes.fromhex("00 01") + length.to_bytes(2,"little") +
+                     bytes([subtype,0,0,0]) + body)
+            mcs = bytes.fromhex("64 00 01 03 eb 70") + bytes([len(share)]) + share
+            return bytes.fromhex("03 00") + (len(mcs)+7).to_bytes(2,"big") + bytes.fromhex("02 f0 80") + mcs
+        s.sendall(share_data(31,bytes.fromhex("01 00 ea 03")))
+        s.sendall(share_data(20,bytes.fromhex("04 00 00 00 00 00 00 00")))
+        s.sendall(share_data(20,bytes.fromhex("01 00 00 00 00 00 00 00")))
+        s.sendall(share_data(39,bytes(8)))
+        for subtype in (31,20,20,40):
+            response = receive_tpkt(s)
+            assert response[7] == 0x68 and response[14+14] == subtype, "finalization PDU mismatch"
+        print("PASS: four server connection-finalization PDUs")
         # Diagnostic only: server should accept a well-framed 335-byte SendDataRequest.
         print("PASS: sent 335-byte MCS SendDataRequest diagnostic fixture")
     print("PASS: MCS Connect-Initial framed packet received")
@@ -120,6 +135,7 @@ finally:
     assert "SEC_INFO_PKT candidate" in out, "RDP security header not inspected"
     assert "Development authentication: ACCEPTED (root)" in out, "valid development login not accepted"
     assert "Client Confirm Active:" in out, "synthetic Confirm Active not parsed"
+    assert "RDP session ACTIVE" in out, "session finalization not reached"
     print(out)
     if err:
         print(err)

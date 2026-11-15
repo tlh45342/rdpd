@@ -9,8 +9,8 @@ TARGET = rdpd
 endif
 .PHONY: all clean test
 all: $(TARGET)
-$(TARGET): src/main.c src/server.c src/protocol.c src/mcs.c src/mcs_response.c src/gcc.c src/mcs_domain.c src/mcs_data.c src/client_info.c src/activation.c include/activation.h include/rdpd.h include/protocol.h include/mcs.h include/mcs_response.h include/gcc.h include/mcs_domain.h include/mcs_data.h include/client_info.h
-	$(CC) $(CPPFLAGS) $(CFLAGS) src/main.c src/server.c src/protocol.c src/mcs.c src/mcs_response.c src/gcc.c src/mcs_domain.c src/mcs_data.c src/client_info.c src/activation.c -o $@ $(LDLIBS)
+$(TARGET): src/main.c src/server.c src/protocol.c src/mcs.c src/mcs_response.c src/gcc.c src/mcs_domain.c src/mcs_data.c src/client_info.c src/activation.c src/finalization.c include/activation.h include/finalization.h include/rdpd.h include/protocol.h include/mcs.h include/mcs_response.h include/gcc.h include/mcs_domain.h include/mcs_data.h include/client_info.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) src/main.c src/server.c src/protocol.c src/mcs.c src/mcs_response.c src/gcc.c src/mcs_domain.c src/mcs_data.c src/client_info.c src/activation.c src/finalization.c -o $@ $(LDLIBS)
 clean:
 	$(RM) rdpd rdpd.exe
 test: all
