@@ -1,9 +1,10 @@
 #include "mcs_response.h"
+#include "gcc.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
-/* Bounded BER writer. A minimal T.125 response, not a complete RDP GCC response. */
+/* Bounded BER writer for MCS Connect-Response and GCC user data. */
 struct writer { unsigned char *p; size_t n, cap; };
 static int put(struct writer *w, unsigned char b)
 {
@@ -37,19 +38,20 @@ int rdpd_build_mcs_response(unsigned char *out, size_t cap, size_t *used)
     };
     static const unsigned char result[] = {0x00};
     static const unsigned char connect_id[] = {0x00};
-    unsigned char body[128], frame[256];
+    unsigned char body[256], frame[384], gcc[256];
+    size_t gcc_length = 0;
     struct writer b = {body, 0, sizeof(body)};
     struct writer f = {frame, 0, sizeof(frame)};
     struct writer o = {out, 0, cap};
     /* Connect-Response ::= [APPLICATION 102] SEQUENCE {
        result ENUMERATED, calledConnectId INTEGER,
        domainParameters DomainParameters, userData OCTET STRING }
-       Empty userData is diagnostic only: GCC ConferenceCreateResponse
-       and server security/channel data still need implementation. */
+       userData contains the GCC response; channel joining remains pending. */
+    if (rdpd_build_gcc_response(gcc, sizeof(gcc), &gcc_length) != 0) return -1;
     if (tlv(&b, 0x0a, result, sizeof(result)) ||
         tlv(&b, 0x02, connect_id, sizeof(connect_id)) ||
         tlv(&b, 0x30, domain, sizeof(domain)) ||
-        tlv(&b, 0x04, NULL, 0)) return -1;
+        tlv(&b, 0x04, gcc, gcc_length)) return -1;
     if (put(&f, 0x7f) || put(&f, 0x66) || ber_length(&f, b.n) ||
         bytes(&f, body, b.n)) return -1;
     if (f.n + 7 > 65535 || f.n + 7 > cap) return -1;

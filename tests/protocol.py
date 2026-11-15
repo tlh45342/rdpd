@@ -41,7 +41,12 @@ try:
         s.sendall(mcs)
         response = s.recv(256)
         assert response[:2] == bytes.fromhex("03 00") and response[7:9] == bytes.fromhex("7f 66"), "MCS Connect-Response missing"
-        print("PASS: experimental MCS Connect-Response received")
+        assert bytes.fromhex("4d 63 44 6e") in response, "GCC conference identifier missing"
+        assert bytes.fromhex("01 0c 0c 00") in response, "SC_CORE missing"
+        assert bytes.fromhex("02 0c 0c 00") in response, "SC_SECURITY missing"
+        assert bytes.fromhex("03 0c 08 00 eb 03") in response, "SC_NET missing"
+        assert len(response) == int.from_bytes(response[2:4], "big"), "TPKT length incorrect"
+        print("PASS: MCS Connect-Response GCC server blocks and TPKT length")
     print("PASS: MCS Connect-Initial framed packet received")
 
     malformed_mcs = bytes.fromhex("03 00 00 0b 02 f0 80 7f 65 02 00")
