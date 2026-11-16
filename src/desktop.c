@@ -3,6 +3,7 @@
 #include "wm.h"
 #include "widget.h"
 #include "icon.h"
+#include "mac_icons.h"
 #include "framebuffer.h"
 #include "session.h"
 #include <stdint.h>
@@ -21,6 +22,7 @@ static wm_window *main_window,*second_window;
 static int clicked,second_clicked;
 static widget main_button,second_button;
 static int icon_selected;
+static int mac_desktop;
 static uint64_t icon_last_click;
 static int icon_last_x,icon_last_y;
 static uint64_t desktop_time_ms(void)
@@ -53,20 +55,23 @@ static void main_paint(wm_window *w,gfx_surface *s,void *unused)
  gfx_rect(s,20,25,(int)s->width-40,(int)s->height-50,0xffff);
  gfx_text(s,30,45,"WELCOME TO RDPD",0);
  gfx_text(s,30,75,"TWO WINDOW COMPOSITION",0);
- widget_draw(&main_button,s,clicked);
+ if(mac_desktop) widget_draw_mac(&main_button,s,clicked);
+ else widget_draw(&main_button,s,clicked);
 }
 static void second_paint(wm_window *w,gfx_surface *s,void *unused)
 {
  (void)w;(void)unused;
  gfx_rect(s,12,15,(int)s->width-24,(int)s->height-30,0xffff);
  gfx_text(s,22,30,"SECOND WINDOW",0);
- widget_draw(&second_button,s,second_clicked);
+ if(mac_desktop) widget_draw_mac(&second_button,s,second_clicked);
+ else widget_draw(&second_button,s,second_clicked);
 }
 void rdpd_desktop_set_surface(gfx_surface *surface)
 {
  const char *requested=getenv("RDPD_THEME");
  wm_theme_id theme=WM_THEME_CLASSIC;
  if(requested) (void)wm_theme_parse(requested,&theme);
+ mac_desktop=(theme==WM_THEME_MAC);
  canvas=surface;clicked=0;second_clicked=0;
  main_button=widget_button(85,105,260,54,"CLICK ME","CLICKED",0x3a8e,0x07e0);
  second_button=widget_button(30,75,160,44,"PRESS ME","ACTIVE",0x2190,0xf800);
@@ -82,13 +87,22 @@ void rdpd_desktop_set_surface(gfx_surface *surface)
 void rdpd_desktop_draw(void)
 {
  if(!canvas || !main_window || !second_window) return;
- gfx_clear(canvas,0x2190);
- gfx_rect(canvas,0,RDPD_HEIGHT-40,RDPD_WIDTH,40,0x1082);
- gfx_rect(canvas,12,RDPD_HEIGHT-34,95,27,0x4a69);
- gfx_text(canvas,23,RDPD_HEIGHT-28,"START",0xffff);
+ gfx_clear(canvas,mac_desktop?0x9e9a:0x2190);
+ gfx_rect(canvas,0,RDPD_HEIGHT-40,RDPD_WIDTH,40,mac_desktop?0xd69a:0x1082);
+ gfx_rect(canvas,12,RDPD_HEIGHT-34,95,27,mac_desktop?0xbdf7:0x4a69);
+ gfx_text(canvas,23,RDPD_HEIGHT-28,mac_desktop?"APPS":"START",mac_desktop?0x2104:0xffff);
  if(icon_selected) gfx_rect(canvas,846,91,56,78,0x07ff);
- icon_draw_desktop(canvas,850,95);
- gfx_text(canvas,826,150,"CALCULATOR",0xffff);
+ if(mac_desktop) {
+  mac_icon_draw(canvas,850,95,MAC_ICON_CALCULATOR);
+  mac_icon_draw(canvas,850,192,MAC_ICON_DISK);
+  mac_icon_draw(canvas,850,289,MAC_ICON_TRASH);
+  gfx_text(canvas,826,150,"CALCULATOR",0x2104);
+  gfx_text(canvas,838,247,"DISK",0x2104);
+  gfx_text(canvas,838,344,"TRASH",0x2104);
+ } else {
+  icon_draw_desktop(canvas,850,95);
+  gfx_text(canvas,826,150,"CALCULATOR",0xffff);
+ }
  session_draw(&current_session);
  gfx_text(canvas,150,RDPD_HEIGHT-30,"RDPD 0.0.1",0xffff);
  if(main_window->minimized)

@@ -235,11 +235,24 @@ void wm_draw_window(wm *m,const wm_window *w)
   w->width-2*t->border_width,w->height-2*t->border_width,t->body);
  gfx_rect(m->surface,w->x+t->border_width,w->y+t->border_width,
   w->width-2*t->border_width,t->title_height,t->title);
+ if(m->theme==WM_THEME_MAC) {
+  int row;
+  for(row=1;row<t->title_height-2;row++) {
+   uint16_t shade=(uint16_t)(row<t->title_height/2?0xf7de:0xd69a);
+   gfx_rect(m->surface,w->x+t->border_width+1,
+    w->y+t->border_width+row,w->width-2*t->border_width-2,1,shade);
+  }
+ }
  gfx_text(m->surface,w->x+t->border_width+(t->controls_left?85:15),w->y+t->border_width+10,w->title,t->title_text);
  cy=w->y+t->border_width+7;
  for(i=0;i<t->control_count;i++) {
   control_x=t->controls_left?w->x+12+i*22:w->x+w->width-22-i*22;
-  gfx_rect(m->surface,control_x,cy,14,14,
+  if(m->theme==WM_THEME_MAC) {
+   uint16_t color=i==0?0xf9a7:(i==1?0xfec0:0x6e0b);
+   gfx_rect(m->surface,control_x+3,cy,8,14,color);
+   gfx_rect(m->surface,control_x,cy+3,14,8,color);
+   gfx_rect(m->surface,control_x+4,cy+2,6,3,0xffff);
+  } else gfx_rect(m->surface,control_x,cy,14,14,
    t->controls_left?(i==0?0xf800:(i==1?0xffc0:0x07e0)):t->control);
  }
  /* Paint application content into a window-local surface, then composite

@@ -11,7 +11,9 @@ static void calculator_draw(wm_window *w,gfx_surface *surface,void *context)
 {
  session *s=(session *)context;
  (void)w;
- calculator_paint(&s->calculator_state,surface);
+ if(s->manager.theme==WM_THEME_MAC)
+  calculator_paint_mac(&s->calculator_state,surface);
+ else calculator_paint(&s->calculator_state,surface);
 }
 static int launch_calculator(void *context)
 {

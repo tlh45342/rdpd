@@ -39,7 +39,7 @@ int calculator_click(calculator *c,int x,int y)
  col=(x-20)/60;row=(y-85)/50;
  calculator_key(c,keys[row][col][0]);return 1;
 }
-void calculator_paint(calculator *c,gfx_surface *s)
+static void calculator_paint_style(calculator *c,gfx_surface *s,int mac)
 {
  int r,k;
  char display[40];
@@ -49,6 +49,12 @@ void calculator_paint(calculator *c,gfx_surface *s)
  gfx_text(s,24,30,display,0x0000);
  for(r=0;r<4;r++) for(k=0;k<4;k++) {
   widget b=widget_button(20+k*60,85+r*50,56,45,keys[r][k],0,0x39e7,0);
-  widget_draw(&b,s,0);
+  if(mac) widget_draw_mac(&b,s,0);
+  else widget_draw(&b,s,0);
  }
 }
+
+void calculator_paint(calculator *c,gfx_surface *s)
+{ calculator_paint_style(c,s,0); }
+void calculator_paint_mac(calculator *c,gfx_surface *s)
+{ calculator_paint_style(c,s,1); }
