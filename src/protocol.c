@@ -172,7 +172,7 @@ int rdpd_handle_connection(uintptr_t handle,uint64_t session_id)
                             continue; /* Idle is not a disconnect. */
                         }
                         if(recv_status!=0) {
-                            rdpd_log_event(recv_status==-3?"INFO":"WARN",0,
+                            rdpd_log_event(recv_status==-3?"INFO":"WARN",session_id,
                                 "session_receive_end","code=%d state=%d idle_timeouts=%lu",
                                 recv_status,state,idle_timeouts);
                             puts("  MCS domain receive ended");
