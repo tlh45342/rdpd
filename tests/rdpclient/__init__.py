@@ -42,7 +42,7 @@ class RDPClient:
     def __init__(self, host="127.0.0.1", port=3389, timeout=10):
         self.host, self.port, self.timeout = host, port, timeout
         self.sock = None
-        self.width, self.height = 800, 600
+        self.width, self.height = 1024, 768
         self.pixels = bytearray(self.width * self.height * 2)
 
     def __enter__(self):
@@ -103,7 +103,7 @@ class RDPClient:
         self.receive_frame()
         return self
 
-    def receive_frame(self, count=247):
+    def receive_frame(self, count=384):
         for _ in range(count):
             frame = tpkt(self.sock)
             if frame[7] != 0x68 or not (frame[13] & 0x80):

@@ -212,7 +212,7 @@ int rdpd_handle_connection(uintptr_t handle)
                                 puts("  failed to send Server Demand Active");
                                 break;
                             }
-                            puts("  Server Demand Active sent (800x600, 16bpp)");
+                            puts("  Server Demand Active sent (1024x768, 16bpp)");
                             state=4;
                         }
                     }

@@ -109,7 +109,7 @@ try:
             assert response[7] == 0x68 and response[14+14] == subtype, "finalization PDU mismatch"
         print("PASS: four server connection-finalization PDUs")
         rectangles = []
-        for tile in range(13 * 19):
+        for tile in range(16 * 24):
             frame = receive_tpkt(s)
             assert frame[7] == 0x68, "bitmap MCS SendDataIndication missing"
             assert frame[13] & 0x80, "bitmap PER two-byte length missing"
@@ -121,7 +121,7 @@ try:
             rect = share[22:40]
             left,top,right,bottom,width,height,bpp,flags,bitmap_len = [
                 int.from_bytes(rect[i:i+2],"little") for i in range(0,18,2)]
-            assert (left,top) == ((tile % 13)*64,(tile // 13)*32)
+            assert (left,top) == ((tile % 16)*64,(tile // 16)*32)
             assert right == left+width-1 and bottom == top+height-1
             assert bpp == 16 and flags == 0 and bitmap_len == width*height*2
             assert len(share[40:]) == bitmap_len, "bitmap pixel length mismatch"
@@ -129,16 +129,16 @@ try:
                 pixel = ((top+height-1-200)*width+(200-left))*2
                 assert share[40+pixel:42+pixel] == bytes.fromhex("ff ff"), "white window background missing"
             rectangles.append((left,top,width,height))
-        assert sum(w*h for _,_,w,h in rectangles) == 800*600
-        print("PASS: 247 desktop bitmap tiles reconstruct 800x600 framebuffer")
+        assert sum(w*h for _,_,w,h in rectangles) == 1024*768
+        print("PASS: 384 desktop bitmap tiles reconstruct 1024x768 framebuffer")
         mouse = (bytes(4) + (0x8001).to_bytes(2,"little") +
                  (0x9000).to_bytes(2,"little") +
                  (390).to_bytes(2,"little") + (340).to_bytes(2,"little"))
         s.sendall(share_data(28,(1).to_bytes(2,"little")+bytes(2)+mouse))
-        refreshed = [receive_tpkt(s) for _ in range(247)]
+        refreshed = [receive_tpkt(s) for _ in range(384)]
         assert all(f[7] == 0x68 and f[15+14] == 2 for f in refreshed)
         def pixel_at(frames,x,y):
-            tile=(y//32)*13+(x//64)
+            tile=(y//32)*16+(x//64)
             share=frames[tile][15:]
             rect=share[22:40]
             left=int.from_bytes(rect[0:2],"little")

@@ -1,3 +1,4 @@
+#include "framebuffer.h"
 #include "activation.h"
 #include <stdio.h>
 #include <string.h>
@@ -30,7 +31,7 @@ int rdpd_build_demand_active(unsigned char *out, size_t cap, size_t *used)
     put16(p,2); put16(p+2,28); /* Bitmap Capability Set */
     put16(p+4,16); /* preferred bits per pixel */
     put16(p+6,1); put16(p+8,1); put16(p+10,1); /* receive depth flags */
-    put16(p+12,800); put16(p+14,600);
+    put16(p+12,RDPD_WIDTH); put16(p+14,RDPD_HEIGHT);
     put16(p+18,1); /* desktop resize */
     put16(p+20,1); /* bitmap compression */
     p+=28;
