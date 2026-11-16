@@ -35,13 +35,22 @@ void wm_init(wm *m,gfx_surface *surface,wm_theme_id theme)
 wm_window *wm_window_create(wm *m,int x,int y,int width,int height,const char *title,wm_click_fn click,void *userdata)
 {
  wm_window *w;
- if(!m || m->count>=WM_MAX_WINDOWS || width<=0 || height<=0) return 0;
- w=&m->windows[m->count];
- m->z_order[m->count]=m->count;
- m->count++;
+ unsigned slot;
+ if(!m || width<=0 || height<=0) return 0;
+ for(slot=0;slot<m->count;slot++)
+  if(m->windows[slot].closed) break;
+ if(slot==m->count) {
+  if(m->count>=WM_MAX_WINDOWS) return 0;
+  m->z_order[m->count]=m->count;
+  m->count++;
+ }
+ w=&m->windows[slot];
+ /* A closed slot is reusable; clear stale callbacks and window state. */
+ memset(w,0,sizeof(*w));
  w->x=x;w->y=y;w->width=width;w->height=height;
  w->title=title;w->click=click;w->userdata=userdata;w->visible=1;
- m->focused=(int)m->count-1;
+ m->focused=(int)slot;
+ (void)wm_raise(m,w);
  return w;
 }
 int wm_hit_test(const wm *m,int x,int y)
