@@ -1,5 +1,6 @@
 #include "framebuffer.h"
 #include "desktop.h"
+#include "gfx.h"
 #include <string.h>
 
 /* Synthetic desktop: a fixed RGB565 blue framebuffer. */
@@ -16,30 +17,23 @@ static void w32(unsigned char *p, unsigned long v)
     w16(p,(unsigned)v);
     w16(p+2,(unsigned)(v>>16));
 }
+static gfx_surface canvas={framebuffer,RDPD_WIDTH,RDPD_HEIGHT,RDPD_WIDTH};
 void rdpd_framebuffer_clear(unsigned short color)
 {
-    size_t i;
-    for (i=0;i<RDPD_WIDTH*RDPD_HEIGHT;i++) framebuffer[i]=color;
+    gfx_clear(&canvas,color);
     initialized=1;
 }
 void rdpd_framebuffer_rect(int x,int y,int width,int height,unsigned short color)
 {
-    int row,col;
-    if (x<0) {width+=x;x=0;}
-    if (y<0) {height+=y;y=0;}
-    if (x+width>RDPD_WIDTH) width=RDPD_WIDTH-x;
-    if (y+height>RDPD_HEIGHT) height=RDPD_HEIGHT-y;
-    if (width<=0 || height<=0) return;
-    for (row=0;row<height;row++) for (col=0;col<width;col++)
-        framebuffer[(size_t)(y+row)*RDPD_WIDTH+x+col]=color;
+    gfx_rect(&canvas,x,y,width,height,color);
     initialized=1;
 }
 static void init_framebuffer(void)
 {
-    size_t i;
     if (initialized) return;
-    (void)i;
+    rdpd_desktop_set_surface(&canvas);
     rdpd_desktop_draw();
+    initialized=1;
 }
 int rdpd_build_bitmap_tile(unsigned index, unsigned char *out,
                            size_t cap, size_t *used)
