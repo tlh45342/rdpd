@@ -9,14 +9,14 @@ else
 TARGET = rdpd
 EXEEXT =
 endif
-SOURCES = src/main.c src/server.c src/protocol.c src/mcs.c src/mcs_response.c src/gcc.c src/mcs_domain.c src/mcs_data.c src/client_info.c src/activation.c src/finalization.c src/framebuffer.c src/desktop.c src/gfx.c src/wm.c src/widget.c src/icon.c src/mac_icons.c src/calculator.c src/app_registry.c src/session.c src/log.c
-HEADERS = include/widget.h include/icon.h include/mac_icons.h resources/icons/mac_icon_assets.inc include/calculator.h include/app_registry.h include/session.h include/log.h include/desktop.h include/wm.h include/gfx.h include/framebuffer.h include/activation.h include/finalization.h include/rdpd.h include/protocol.h include/mcs.h include/mcs_response.h include/gcc.h include/mcs_domain.h include/mcs_data.h include/client_info.h
+SOURCES = src/main.c src/server.c src/protocol.c src/mcs.c src/mcs_response.c src/gcc.c src/mcs_domain.c src/mcs_data.c src/client_info.c src/activation.c src/finalization.c src/framebuffer.c src/desktop.c src/gfx.c src/wm.c src/widget.c src/icon.c src/mac_icons.c src/calculator.c src/app_registry.c src/session.c src/log.c src/ipc.c
+HEADERS = include/widget.h include/icon.h include/mac_icons.h resources/icons/mac_icon_assets.inc include/calculator.h include/app_registry.h include/session.h include/ipc.h include/log.h include/desktop.h include/wm.h include/gfx.h include/framebuffer.h include/activation.h include/finalization.h include/rdpd.h include/protocol.h include/mcs.h include/mcs_response.h include/gcc.h include/mcs_domain.h include/mcs_data.h include/client_info.h
 .PHONY: all clean test
 all: $(TARGET)
 $(TARGET): $(SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(SOURCES) -o $@ $(LDLIBS)
 clean:
-	$(RM) rdpd rdpd.exe test_gfx test_gfx.exe test_wm test_wm.exe test_composition test_composition.exe test_controls test_controls.exe test_widgets test_widgets.exe test_apps test_apps.exe test_session test_session.exe test_desktop_input test_desktop_input.exe test_mac_icons test_mac_icons.exe test_color32 test_color32.exe test_log test_log.exe
+	$(RM) rdpd rdpd.exe test_gfx test_gfx.exe test_wm test_wm.exe test_composition test_composition.exe test_controls test_controls.exe test_widgets test_widgets.exe test_apps test_apps.exe test_session test_session.exe test_desktop_input test_desktop_input.exe test_mac_icons test_mac_icons.exe test_color32 test_color32.exe test_log test_log.exe test_ipc test_ipc.exe
 test: all
 	python tests/smoke.py
 	python tests/protocol.py
@@ -55,3 +55,6 @@ test: all
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_log.c src/log.c -o test_log$(EXEEXT)
 	./test_log$(EXEEXT)
 	$(RM) test_log$(EXEEXT)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_ipc.c src/ipc.c -o test_ipc$(EXEEXT)
+	./test_ipc$(EXEEXT)
+	$(RM) test_ipc$(EXEEXT)
