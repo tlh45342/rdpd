@@ -17,3 +17,7 @@ These are first-pass visual interpretations, not exact OS replicas. Mac theme pl
 `desktop.c` creates a WM window and receives window-local pointer events. Its button remains application-owned. The RDP protocol and bitmap encoder are unchanged. This is still an in-process WM; session isolation, composition, damage tracking, independent desktop processes and IPC are future work.
 
 Run `make test` for the standalone WM tests and the existing RDP input/redraw regressions.
+
+## Pointer capture (build 0019)
+
+The WM now supports dragging a window by its title bar and resizing via its bottom-right 12×12 grip. The RDP input decoder forwards pointer down, movement and button release. Window content follows the window origin. Mouse capture is released on button-up. The demo uses a fixed-size 260×54 button and is not yet a general widget toolkit. Close/minimize/maximize controls remain decorative.

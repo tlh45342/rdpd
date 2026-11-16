@@ -24,6 +24,7 @@ typedef struct wm {
  wm_window windows[WM_MAX_WINDOWS];
  unsigned count;
  int focused;
+ int pointer_window, pointer_mode, pointer_x, pointer_y;
  wm_theme_id theme;
 } wm;
 const wm_theme *wm_theme_get(wm_theme_id id);
@@ -32,6 +33,9 @@ void wm_init(wm *manager,gfx_surface *surface,wm_theme_id theme);
 wm_window *wm_window_create(wm *manager,int x,int y,int width,int height,const char *title,wm_click_fn click,void *userdata);
 int wm_hit_test(const wm *manager,int x,int y);
 int wm_mouse_down(wm *manager,int x,int y);
+int wm_pointer_down(wm *manager,int x,int y);
+int wm_pointer_move(wm *manager,int x,int y);
+void wm_pointer_up(wm *manager);
 void wm_draw_window(wm *manager,const wm_window *window);
 void wm_draw(wm *manager);
 #endif

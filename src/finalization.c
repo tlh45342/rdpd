@@ -43,11 +43,17 @@ int rdpd_inspect_finalization(const unsigned char *p,size_t n)
                 for (i=0;i<count;i++) {
                     const unsigned char *event=s+22+(size_t)i*12;
                     unsigned message=u16(event+4),flags=u16(event+6);
-                    if (message==0x8001 && (flags&0x9000)==0x9000) {
+                    if (message==0x8001) {
                         unsigned x=u16(event+8),y=u16(event+10);
-                        int changed=rdpd_desktop_click(x,y);
-                        printf("  Mouse down at (%u,%u): %s\n",
-                               x,y,changed?"button activated":"outside button");
+                        int kind=0,changed;
+                        if ((flags&0x9000)==0x9000) kind=1;
+                        else if ((flags&0x1000)!=0) kind=3;
+                        else if (flags&0x0800) kind=2;
+                        if (!kind) continue;
+                        changed=rdpd_desktop_pointer(x,y,kind);
+                        if (kind==1)
+                            printf("  Mouse down at (%u,%u): %s\n",
+                                   x,y,changed?"window handled":"outside window");
                         if (changed) return 2;
                     }
                 }

@@ -29,6 +29,7 @@ void wm_init(wm *m,gfx_surface *surface,wm_theme_id theme)
  m->surface=surface;
  m->theme=(unsigned)theme<WM_THEME_COUNT?theme:WM_THEME_CLASSIC;
  m->focused=-1;
+ m->pointer_window=-1;
 }
 wm_window *wm_window_create(wm *m,int x,int y,int width,int height,const char *title,wm_click_fn click,void *userdata)
 {
@@ -60,6 +61,54 @@ int wm_mouse_down(wm *m,int x,int y)
  w=&m->windows[i];
  if(w->click) w->click(w,x-w->x,y-w->y,w->userdata);
  return 1;
+}
+/* Pointer capture: title bar drags, bottom-right grip resizes.
+   All coordinates are screen-relative; applications receive local clicks. */
+int wm_pointer_down(wm *m,int x,int y)
+{
+ int i;
+ wm_window *w;
+ const wm_theme *t;
+ if(!m) return 0;
+ i=wm_hit_test(m,x,y);
+ m->pointer_window=-1;m->pointer_mode=0;
+ if(i<0) return 0;
+ w=&m->windows[i];t=wm_theme_get(m->theme);
+ m->focused=i;
+ if(x>=w->x+w->width-12 && y>=w->y+w->height-12) {
+  m->pointer_mode=2;
+ } else if(y<w->y+t->border_width+t->title_height) {
+  m->pointer_mode=1;
+ } else {
+  if(w->click) w->click(w,x-w->x,y-w->y,w->userdata);
+  return 1;
+ }
+ m->pointer_window=i;m->pointer_x=x;m->pointer_y=y;
+ return 1;
+}
+int wm_pointer_move(wm *m,int x,int y)
+{
+ wm_window *w;
+ int dx,dy;
+ if(!m || m->pointer_window<0 || !m->pointer_mode) return 0;
+ w=&m->windows[m->pointer_window];
+ dx=x-m->pointer_x;dy=y-m->pointer_y;
+ if(!dx && !dy) return 0;
+ if(m->pointer_mode==1) {
+  w->x+=dx;w->y+=dy;
+ } else {
+  int nw=w->width+dx,nh=w->height+dy;
+  if(nw<120) nw=120;
+  if(nh<80) nh=80;
+  w->width=nw;w->height=nh;
+ }
+ m->pointer_x=x;m->pointer_y=y;
+ return 1;
+}
+void wm_pointer_up(wm *m)
+{
+ if(!m) return;
+ m->pointer_window=-1;m->pointer_mode=0;
 }
 void wm_draw_window(wm *m,const wm_window *w)
 {

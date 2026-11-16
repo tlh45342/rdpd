@@ -38,6 +38,19 @@ int main(void)
   assert(wm_hit_test(&manager,60,50)==0);
   assert(!wm_theme_parse("unknown",&theme));
  }
+ wm_init(&manager,&surface,WM_THEME_WIN95);
+ a=wm_window_create(&manager,10,10,150,110,"DRAG",on_click,0);
+ assert(a);
+ assert(wm_pointer_down(&manager,25,20));
+ assert(wm_pointer_move(&manager,40,35));
+ assert(a->x==25 && a->y==25);
+ wm_pointer_up(&manager);
+ assert(!wm_pointer_move(&manager,90,90));
+ assert(a->x==25 && a->y==25);
+ assert(wm_pointer_down(&manager,170,125));
+ assert(wm_pointer_move(&manager,190,140));
+ assert(a->width==170 && a->height==125);
+ wm_pointer_up(&manager);
  wm_init(&manager,&surface,WM_THEME_CLASSIC);
  for(i=0;i<WM_MAX_WINDOWS;i++)
   assert(wm_window_create(&manager,0,0,10,10,"X",0,0));
