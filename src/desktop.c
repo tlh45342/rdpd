@@ -84,13 +84,54 @@ void rdpd_desktop_set_surface(gfx_surface *surface)
  wm_window_set_paint(main_window,main_paint);
  wm_window_set_paint(second_window,second_paint);
 }
+/* Procedural dark-purple wallpaper and a rounded, floating dock.
+   No external image assets or RDP-specific rendering dependencies. */
+static void mac_wallpaper(gfx_surface *s)
+{
+ unsigned y,x;
+ for(y=0;y<s->height;y++) {
+  for(x=0;x<s->width;x++) {
+   int dx=(int)x-700,dy=(int)y-560;
+   unsigned glow=(unsigned)(dx*dx+dy*dy);
+   unsigned r=glow<240000? (240000-glow)/4800:0;
+   unsigned red=22+r+(x*16)/s->width;
+   unsigned green=5+(y*9)/s->height;
+   unsigned blue=65+(x*30)/s->width+r/2;
+   if(red>255)red=255;
+   if(blue>255)blue=255;
+   s->pixels[(size_t)y*s->stride+x]=(red<<16)|(green<<8)|blue;
+  }
+ }
+}
+static int mac_dock_hit(unsigned x,unsigned y)
+{
+ return y>=RDPD_HEIGHT-66 && y<RDPD_HEIGHT-9 &&
+        x>=RDPD_WIDTH/2-150 && x<RDPD_WIDTH/2+150;
+}
+static void mac_dock(gfx_surface *s)
+{
+ int x=RDPD_WIDTH/2-150,y=RDPD_HEIGHT-66,i,j;
+ /* Rounded translucent-looking dock, with shadow and highlight. */
+ gfx_rect_rgb(s,x-3,y-3,306,62,0x10092a);
+ gfx_rect_rgb(s,x,y,300,56,0x3b2c62);
+ gfx_rect_rgb(s,x+6,y+2,288,2,0x776593);
+ for(i=0;i<3;i++) {
+  int cx=x+25+i*99;
+  gfx_rect_rgb(s,cx-3,y+5,57,47,0x211537);
+  gfx_rect_rgb(s,cx,y+7,51,43,0x63527b);
+  mac_icon_draw(s,cx+2,y+4,i==0?MAC_ICON_DISK:
+                i==1?MAC_ICON_CALCULATOR:MAC_ICON_TRASH);
+  for(j=0;j<3;j++) gfx_rect_rgb(s,cx+23+j,y+52,1,1,0xc4b9d5);
+ }
+}
 void rdpd_desktop_draw(void)
 {
  if(!canvas || !main_window || !second_window) return;
- gfx_clear(canvas,mac_desktop?0x9e9a:0x2190);
- gfx_rect(canvas,0,RDPD_HEIGHT-40,RDPD_WIDTH,40,mac_desktop?0xd69a:0x1082);
- gfx_rect(canvas,12,RDPD_HEIGHT-34,95,27,mac_desktop?0xbdf7:0x4a69);
- gfx_text(canvas,23,RDPD_HEIGHT-28,mac_desktop?"APPS":"START",mac_desktop?0x2104:0xffff);
+ if(mac_desktop) mac_wallpaper(canvas);
+ else gfx_clear(canvas,0x2190);
+ if(!mac_desktop) gfx_rect(canvas,0,RDPD_HEIGHT-40,RDPD_WIDTH,40,0x1082);
+ if(!mac_desktop) gfx_rect(canvas,12,RDPD_HEIGHT-34,95,27,0x4a69);
+ if(!mac_desktop) gfx_text(canvas,23,RDPD_HEIGHT-28,"START",0xffff);
  if(icon_selected) gfx_rect(canvas,846,91,56,78,0x07ff);
  if(mac_desktop) {
   mac_icon_draw(canvas,850,95,MAC_ICON_CALCULATOR);
@@ -104,7 +145,8 @@ void rdpd_desktop_draw(void)
   gfx_text(canvas,826,150,"CALCULATOR",0xffff);
  }
  session_draw(&current_session);
- gfx_text(canvas,150,RDPD_HEIGHT-30,"RDPD 0.0.1",0xffff);
+ if(mac_desktop) mac_dock(canvas);
+ else gfx_text(canvas,150,RDPD_HEIGHT-30,"RDPD 0.0.1",0xffff);
  if(main_window->minimized)
   gfx_text(canvas,320,RDPD_HEIGHT-28,"RESTORE MAIN",0xffff);
  if(second_window->minimized)
@@ -114,6 +156,13 @@ int rdpd_desktop_pointer_at(unsigned x,unsigned y,int kind,uint64_t now_ms)
 {
  int before=clicked,second_before=second_clicked,changed=0;
  if(kind==1) {
+  if(mac_desktop && mac_dock_hit(x,y) &&
+     wm_hit_test(&manager,(int)x,(int)y)<0) {
+   if(x>=RDPD_WIDTH/2-51 && x<RDPD_WIDTH/2+49)
+    changed=session_launch(&current_session,"calculator");
+   if(changed){rdpd_desktop_draw();return 1;}
+   return 0;
+  }
   /* Timed double-click: same icon, <=500ms, <=8px displacement. */
   if(x>=826 && x<925 && y>=91 && y<171 && wm_hit_test(&manager,(int)x,(int)y)<0) {
    if(icon_selected && now_ms>=icon_last_click &&

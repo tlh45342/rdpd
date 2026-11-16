@@ -8,7 +8,7 @@ static const wm_theme themes[WM_THEME_COUNT]={
  {"win95",0xc618,0x0010,0xffff,0xc618,0x7bef,0xc618,4,27,3,0},
  {"win10",0xf7de,0x2190,0xffff,0xffff,0x9cf3,0xf7de,1,32,3,0},
  {"win11",0xf7de,0xdefb,0x2104,0xffff,0xc638,0xf7de,2,36,3,0},
- {"mac",0xe71c,0xe71c,0x2104,0xffff,0xad55,0xf800,2,32,3,1}
+ {"mac",0x39a9,0x39a9,0xffff,0x2926,0x5a4e,0xf800,2,32,3,1}
 };
 const wm_theme *wm_theme_get(wm_theme_id id)
 {
@@ -238,7 +238,7 @@ void wm_draw_window(wm *m,const wm_window *w)
  if(m->theme==WM_THEME_MAC) {
   int row;
   for(row=1;row<t->title_height-2;row++) {
-   uint16_t shade=(uint16_t)(row<t->title_height/2?0xf7de:0xd69a);
+   uint16_t shade=(uint16_t)(row<t->title_height/2?0x49eb:0x3128);
    gfx_rect(m->surface,w->x+t->border_width+1,
     w->y+t->border_width+row,w->width-2*t->border_width-2,1,shade);
   }
