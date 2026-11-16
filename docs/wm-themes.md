@@ -21,3 +21,7 @@ Run `make test` for the standalone WM tests and the existing RDP input/redraw re
 ## Pointer capture (build 0019)
 
 The WM now supports dragging a window by its title bar and resizing via its bottom-right 12×12 grip. The RDP input decoder forwards pointer down, movement and button release. Window content follows the window origin. Mouse capture is released on button-up. The demo uses a fixed-size 260×54 button and is not yet a general widget toolkit. Close/minimize/maximize controls remain decorative.
+
+## Z-order and focus (build 0020)
+
+Window storage remains in stable slots so window pointers and callback userdata do not change when windows are raised. z_order[] stores back-to-front slot indices. Hit-testing scans front-to-back; painting scans back-to-front. wm_raise() moves a visible window to the front and focuses it. Both legacy click and pointer-down paths raise the hit window. A click on an exposed portion of a background window therefore activates it without invalidating existing handles. There is no multi-window demo yet; dedicated tests cover overlap, raise, focus and pointer selection.

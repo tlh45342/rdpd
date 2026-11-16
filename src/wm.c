@@ -35,7 +35,9 @@ wm_window *wm_window_create(wm *m,int x,int y,int width,int height,const char *t
 {
  wm_window *w;
  if(!m || m->count>=WM_MAX_WINDOWS || width<=0 || height<=0) return 0;
- w=&m->windows[m->count++];
+ w=&m->windows[m->count];
+ m->z_order[m->count]=m->count;
+ m->count++;
  w->x=x;w->y=y;w->width=width;w->height=height;
  w->title=title;w->click=click;w->userdata=userdata;w->visible=1;
  m->focused=(int)m->count-1;
@@ -46,11 +48,26 @@ int wm_hit_test(const wm *m,int x,int y)
  int i;
  if(!m) return -1;
  for(i=(int)m->count-1;i>=0;i--) {
-  const wm_window *w=&m->windows[i];
+  const wm_window *w=&m->windows[m->z_order[i]];
   if(w->visible && x>=w->x && y>=w->y &&
-     x-w->x<w->width && y-w->y<w->height) return i;
+     x-w->x<w->width && y-w->y<w->height) return (int)m->z_order[i];
  }
  return -1;
+}
+/* Stable window handles: only the z-order index array moves. */
+int wm_raise(wm *m,wm_window *w)
+{
+ unsigned i,j,index;
+ if(!m || !w) return 0;
+ for(index=0;index<m->count;index++)
+  if(&m->windows[index]==w) break;
+ if(index==m->count || !w->visible) return 0;
+ for(i=0;i<m->count;i++) if(m->z_order[i]==index) break;
+ if(i==m->count) return 0;
+ for(j=i;j+1<m->count;j++) m->z_order[j]=m->z_order[j+1];
+ m->z_order[m->count-1]=index;
+ m->focused=(int)index;
+ return 1;
 }
 int wm_mouse_down(wm *m,int x,int y)
 {
@@ -59,6 +76,7 @@ int wm_mouse_down(wm *m,int x,int y)
  if(i<0) return 0;
  m->focused=i;
  w=&m->windows[i];
+ (void)wm_raise(m,w);
  if(w->click) w->click(w,x-w->x,y-w->y,w->userdata);
  return 1;
 }
@@ -75,6 +93,7 @@ int wm_pointer_down(wm *m,int x,int y)
  if(i<0) return 0;
  w=&m->windows[i];t=wm_theme_get(m->theme);
  m->focused=i;
+ (void)wm_raise(m,w);
  if(x>=w->x+w->width-12 && y>=w->y+w->height-12) {
   m->pointer_mode=2;
  } else if(y<w->y+t->border_width+t->title_height) {
@@ -133,5 +152,5 @@ void wm_draw(wm *m)
 {
  unsigned i;
  if(!m) return;
- for(i=0;i<m->count;i++) wm_draw_window(m,&m->windows[i]);
+ for(i=0;i<m->count;i++) wm_draw_window(m,&m->windows[m->z_order[i]]);
 }

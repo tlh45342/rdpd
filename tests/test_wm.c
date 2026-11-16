@@ -24,6 +24,15 @@ int main(void)
   b=wm_window_create(&manager,50,30,100,100,"SECOND",on_click,0);
   assert(a && b);
   assert(wm_hit_test(&manager,60,50)==1);
+  assert(wm_raise(&manager,a));
+  assert(wm_hit_test(&manager,60,50)==0);
+  assert(manager.focused==0);
+  assert(wm_raise(&manager,b));
+  assert(wm_hit_test(&manager,60,50)==1);
+  assert(wm_pointer_down(&manager,20,20));
+  wm_pointer_up(&manager);
+  assert(wm_hit_test(&manager,60,50)==0);
+  assert(wm_raise(&manager,b));
   assert(wm_hit_test(&manager,20,20)==0);
   assert(wm_hit_test(&manager,190,150)==-1);
   gfx_clear(&surface,0);
@@ -55,6 +64,6 @@ int main(void)
  for(i=0;i<WM_MAX_WINDOWS;i++)
   assert(wm_window_create(&manager,0,0,10,10,"X",0,0));
  assert(!wm_window_create(&manager,0,0,10,10,"X",0,0));
- puts("PASS: WM themes, z-order hit-testing, local events and limits");
+ puts("PASS: WM stable handles, raise/focus, z-order hit-testing, themes and pointer capture");
  return 0;
 }
