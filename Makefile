@@ -16,3 +16,4 @@ clean:
 test: all
 	python tests/smoke.py
 	python tests/protocol.py
+	python tests/test_rdpclient.py
