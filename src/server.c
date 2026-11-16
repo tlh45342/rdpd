@@ -1,5 +1,6 @@
 #include "rdpd.h"
 #include "protocol.h"
+#include "log.h"
 #include <stdio.h>
 #ifdef _WIN32
 #include <winsock2.h>
@@ -24,6 +25,7 @@ int rdpd_serve(unsigned short port, volatile sig_atomic_t *running)
     socket_t listener;
     struct sockaddr_in addr;
     int result = 1;
+    uint64_t next_session=0;
 #ifdef _WIN32
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2,2), &wsa)) { fprintf(stderr, "WSAStartup failed\n"); return 1; }
@@ -65,7 +67,14 @@ int rdpd_serve(unsigned short port, volatile sig_atomic_t *running)
             if (client == INVALID_SOCKET) continue;
             printf("connection from %s:%u\n", inet_ntoa(peer.sin_addr), (unsigned)ntohs(peer.sin_port));
             fflush(stdout);
-            rdpd_handle_connection((uintptr_t)client);
+            {
+                uint64_t id=++next_session;
+                int rc;
+                rdpd_log_event("INFO",id,"client_connect","address=%s port=%u",
+                               inet_ntoa(peer.sin_addr),(unsigned)ntohs(peer.sin_port));
+                rc=rdpd_handle_connection((uintptr_t)client,id);
+                rdpd_log_event("INFO",id,"client_closed","result=%d",rc);
+            }
             CLOSESOCKET(client);
         }
     }

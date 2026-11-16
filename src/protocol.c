@@ -6,6 +6,8 @@
 #include "activation.h"
 #include "finalization.h"
 #include "framebuffer.h"
+#include "log.h"
+#include <errno.h>
 #include <stdio.h>
 #ifdef _WIN32
 #include <winsock2.h>
@@ -24,10 +26,12 @@ static int recv_exact(net_socket fd, unsigned char *p, size_t n);
 static int recv_tpkt(net_socket fd, unsigned char *packet, size_t *length)
 {
     size_t n;
-    if (recv_exact(fd, packet, 4) != 0) return -1;
+    int rc=recv_exact(fd,packet,4);
+    if(rc!=0)return rc;
     n = ((size_t)packet[2] << 8) | packet[3];
     if (packet[0] != 3 || packet[1] != 0 || n < 7 || n > MAX_TPKT) return -2;
-    if (recv_exact(fd, packet + 4, n - 4) != 0) return -1;
+    rc=recv_exact(fd,packet+4,n-4);
+    if(rc!=0)return -4; /* Partial TPKT cannot be safely resumed. */
     *length = n;
     return 0;
 }
@@ -36,7 +40,18 @@ static int recv_exact(net_socket fd, unsigned char *p, size_t n)
 {
     while (n) {
         int r = recv(fd, (char *)p, (int)n, 0);
-        if (r <= 0) return -1;
+        if (r == 0) return -3; /* orderly close */
+        if (r < 0) {
+#ifdef _WIN32
+            int e=WSAGetLastError();
+            if(e==WSAETIMEDOUT || e==WSAEWOULDBLOCK)return -2;
+            if(e==WSAEINTR)continue;
+#else
+            if(errno==EAGAIN || errno==EWOULDBLOCK)return -2;
+            if(errno==EINTR)continue;
+#endif
+            return -1;
+        }
         p += r;
         n -= (size_t)r;
     }
@@ -85,12 +100,14 @@ int rdpd_parse_x224(const unsigned char *p, size_t n, unsigned int *protocols)
     return end == n ? 0 : -1;
 }
 
-int rdpd_handle_connection(uintptr_t handle)
+int rdpd_handle_connection(uintptr_t handle,uint64_t session_id)
 {
     net_socket fd = (net_socket)handle;
     unsigned char packet[MAX_TPKT];
     unsigned int protocols;
     size_t length;
+    unsigned long idle_timeouts=0;
+    unsigned long input_packets_total=0;
 #ifdef _WIN32
     DWORD timeout = 3000;
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout));
@@ -104,6 +121,8 @@ int rdpd_handle_connection(uintptr_t handle)
         rdpd_parse_x224(packet, length, &protocols) != 0) {
         puts("  invalid X.224 Connection Request"); return -1;
     }
+    rdpd_log_event("INFO",session_id,"x224_request","bytes=%u protocols=0x%08x",
+                   (unsigned)length,protocols);
     printf("  X.224 Connection Request: %u bytes, requestedProtocols=0x%08x\n",
            (unsigned)length, protocols);
     /* No TLS/CredSSP yet: do not advertise a security mode we cannot run. */
@@ -111,6 +130,7 @@ int rdpd_handle_connection(uintptr_t handle)
         static const unsigned char failure[] = {
             3,0,0,19, 14,0xd0,0,0,0,0,0, 3,0,8,0, 2,0,0,0
         };
+        rdpd_log_event("WARN",session_id,"security_rejected","protocols=0x%08x",protocols);
         puts("  security negotiation unsupported; sending failure (SSL_NOT_ALLOWED_BY_SERVER)");
         fflush(stdout);
         return send_exact(fd, failure, sizeof(failure));
@@ -145,21 +165,32 @@ int rdpd_handle_connection(uintptr_t handle)
                     unsigned input_packets=0;
                     for (;;) {
                         int status;
-                        if (recv_tpkt(fd, packet, &length) != 0) {
-                            puts("  MCS domain receive ended (disconnect/timeout)");
+                        int recv_status=recv_tpkt(fd,packet,&length);
+                        if(recv_status==-2 && state==7) {
+                            idle_timeouts++;
+                            rdpd_log_event("DEBUG",session_id,"session_idle","timeouts=%lu",idle_timeouts);
+                            continue; /* Idle is not a disconnect. */
+                        }
+                        if(recv_status!=0) {
+                            rdpd_log_event(recv_status==-3?"INFO":"WARN",0,
+                                "session_receive_end","code=%d state=%d idle_timeouts=%lu",
+                                recv_status,state,idle_timeouts);
+                            puts("  MCS domain receive ended");
                             break;
                         }
                         if (state!=7 || length<16 || packet[7]!=0x64 || (packet[13]&0x80)==0 || packet[15]!=0x17)
                             printf("  next client TPKT: %u bytes, MCS opcode=0x%02x\n",
                                    (unsigned)length, length > 7 ? packet[7] : 0);
-                        if (state==7) input_packets++;
+                        if (state==7) {input_packets++;input_packets_total++;}
                         if (length>=8 && packet[7]==0x21) {
+                            rdpd_log_event("INFO",session_id,"client_disconnect","reason=mcs_ultimatum");
                             puts("  MCS Disconnect Provider Ultimatum received");
                             break;
                         }
                         status = rdpd_mcs_domain_step(packet, length,
                                   response, sizeof(response), &response_length, &state);
                         if (status < 0) {
+                            rdpd_log_event("WARN",session_id,"protocol_error","state=%d packet_bytes=%u",state,(unsigned)length);
                             puts("  unexpected or unsupported MCS domain packet");
                             break;
                         }
@@ -178,6 +209,8 @@ int rdpd_handle_connection(uintptr_t handle)
                             }
                             if (state==6) {
                                 puts("  Server Synchronize, Control Cooperate, Control Granted, Font Map sent");
+                                rdpd_log_event("INFO",session_id,"session_active","width=%u height=%u bpp=32",
+                                               RDPD_WIDTH,RDPD_HEIGHT);
                                 puts("  RDP session ACTIVE (synthetic desktop)");
                                 state=7;
                             } else {
@@ -212,11 +245,14 @@ int rdpd_handle_connection(uintptr_t handle)
                                 puts("  failed to send Server Demand Active");
                                 break;
                             }
-                            puts("  Server Demand Active sent (1024x768, 16bpp)");
+                            puts("  Server Demand Active sent (1024x768, 32bpp)");
                             state=4;
                         }
                     }
                     if (input_packets) printf("  post-activation packets: %u\n",input_packets);
+                    rdpd_log_event("INFO",session_id,"session_summary",
+                                   "input_packets=%lu idle_timeouts=%lu",
+                                   input_packets_total,idle_timeouts);
                 }
             }
             fflush(stdout);
