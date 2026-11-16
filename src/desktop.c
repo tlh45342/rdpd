@@ -66,11 +66,21 @@ void rdpd_desktop_draw(void)
  gfx_text(canvas,23,572,"START",0xffff);
  wm_draw(&manager);
  gfx_text(canvas,150,570,"RDPD 0.0.1",0xffff);
+ if(main_window->minimized)
+  gfx_text(canvas,320,572,"RESTORE MAIN",0xffff);
+ if(second_window->minimized)
+  gfx_text(canvas,550,572,"RESTORE SECOND",0xffff);
 }
 int rdpd_desktop_pointer(unsigned x,unsigned y,int kind)
 {
  int before=clicked,second_before=second_clicked,changed=0;
- if(kind==1) changed=wm_pointer_down(&manager,(int)x,(int)y);
+ if(kind==1) {
+  if(y>=560 && main_window->minimized && x>=310 && x<520)
+   changed=wm_window_restore(&manager,main_window);
+  else if(y>=560 && second_window->minimized && x>=540 && x<790)
+   changed=wm_window_restore(&manager,second_window);
+  else changed=wm_pointer_down(&manager,(int)x,(int)y);
+ }
  else if(kind==2) changed=wm_pointer_move(&manager,(int)x,(int)y);
  else if(kind==3) wm_pointer_up(&manager);
  if(changed || clicked!=before || second_clicked!=second_before) {

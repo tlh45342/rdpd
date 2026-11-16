@@ -38,3 +38,17 @@ The client surface is allocated per repaint for now (bounded to 1,048,576
 pixels); a reusable surface and dirty rectangles are future optimizations.
 Click exposed portions of either window to raise it. Title-bar dragging and
 bottom-right resizing remain available.
+
+
+## Window controls (build 0022)
+
+Title-bar controls now perform close, maximize/restore, and minimize.
+On Windows-like themes the rightmost control closes, the next maximizes,
+and the third minimizes. On Mac the leftmost red control closes, yellow
+minimizes and green maximizes. The classic theme exposes close only.
+Minimized demo windows have clickable restore labels in the taskbar.
+Maximize preserves the original rectangle and restores it exactly.
+Closing hides the window permanently within the demo session; its
+application remains in-process. A close-request callback may veto close.
+Focus is reassigned to the highest visible window after minimize/close.
+Window storage and handles remain stable.

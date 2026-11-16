@@ -50,7 +50,7 @@ int wm_hit_test(const wm *m,int x,int y)
  if(!m) return -1;
  for(i=(int)m->count-1;i>=0;i--) {
   const wm_window *w=&m->windows[m->z_order[i]];
-  if(w->visible && x>=w->x && y>=w->y &&
+  if(w->visible && !w->closed && x>=w->x && y>=w->y &&
      x-w->x<w->width && y-w->y<w->height) return (int)m->z_order[i];
  }
  return -1;
@@ -62,13 +62,91 @@ int wm_raise(wm *m,wm_window *w)
  if(!m || !w) return 0;
  for(index=0;index<m->count;index++)
   if(&m->windows[index]==w) break;
- if(index==m->count || !w->visible) return 0;
+ if(index==m->count || !w->visible || w->closed) return 0;
  for(i=0;i<m->count;i++) if(m->z_order[i]==index) break;
  if(i==m->count) return 0;
  for(j=i;j+1<m->count;j++) m->z_order[j]=m->z_order[j+1];
  m->z_order[m->count-1]=index;
  m->focused=(int)index;
  return 1;
+}
+static void wm_refocus(wm *m)
+{
+ int i;
+ m->focused=-1;
+ for(i=(int)m->count-1;i>=0;i--) {
+  unsigned slot=m->z_order[i];
+  if(m->windows[slot].visible && !m->windows[slot].closed) {
+   m->focused=(int)slot;break;
+  }
+ }
+}
+void wm_window_set_close(wm_window *w,wm_close_fn callback)
+{
+ if(w) w->close_request=callback;
+}
+int wm_window_minimize(wm *m,wm_window *w)
+{
+ if(!m || !w || w->closed || !w->visible) return 0;
+ w->minimized=1;w->visible=0;
+ if(m->pointer_window==(int)(w-m->windows)) wm_pointer_up(m);
+ wm_refocus(m);
+ return 1;
+}
+int wm_window_restore(wm *m,wm_window *w)
+{
+ if(!m || !w || w->closed || (!w->minimized && !w->maximized)) return 0;
+ if(w->maximized) {
+  w->x=w->restore_x;w->y=w->restore_y;
+  w->width=w->restore_width;w->height=w->restore_height;
+  w->maximized=0;
+ }
+ w->minimized=0;w->visible=1;
+ (void)wm_raise(m,w);
+ return 1;
+}
+int wm_window_toggle_maximize(wm *m,wm_window *w)
+{
+ if(!m || !m->surface || !w || w->closed || !w->visible) return 0;
+ if(w->maximized) return wm_window_restore(m,w);
+ w->restore_x=w->x;w->restore_y=w->y;
+ w->restore_width=w->width;w->restore_height=w->height;
+ w->x=0;w->y=0;w->width=(int)m->surface->width;
+ w->height=(int)m->surface->height-40;
+ w->maximized=1;
+ (void)wm_raise(m,w);
+ return 1;
+}
+int wm_window_close(wm *m,wm_window *w)
+{
+ if(!m || !w || w->closed) return 0;
+ /* A callback can veto close; 0 means the application keeps its window. */
+ if(w->close_request && !w->close_request(w,w->userdata)) return 0;
+ w->closed=1;w->visible=0;w->minimized=0;
+ if(m->pointer_window==(int)(w-m->windows)) wm_pointer_up(m);
+ wm_refocus(m);
+ return 1;
+}
+static int wm_control(wm *m,wm_window *w,int x,int y)
+{
+ const wm_theme *t=wm_theme_get(m->theme);
+ int i,cy=w->y+t->border_width+7;
+ if(y<cy || y>=cy+14) return 0;
+ for(i=0;i<t->control_count;i++) {
+  int cx=t->controls_left?w->x+12+i*22:w->x+w->width-22-i*22;
+  if(x<cx || x>=cx+14) continue;
+  if(t->controls_left) {
+   if(i==0) (void)wm_window_close(m,w);
+   else if(i==1) (void)wm_window_minimize(m,w);
+   else (void)wm_window_toggle_maximize(m,w);
+  } else {
+   if(i==0) (void)wm_window_close(m,w);
+   else if(i==1) (void)wm_window_toggle_maximize(m,w);
+   else (void)wm_window_minimize(m,w);
+  }
+  return 1;
+ }
+ return 0;
 }
 int wm_mouse_down(wm *m,int x,int y)
 {
@@ -78,6 +156,7 @@ int wm_mouse_down(wm *m,int x,int y)
  m->focused=i;
  w=&m->windows[i];
  (void)wm_raise(m,w);
+ if(wm_control(m,w,x,y)) return 1;
  if(w->click) w->click(w,x-w->x,y-w->y,w->userdata);
  return 1;
 }
@@ -95,6 +174,7 @@ int wm_pointer_down(wm *m,int x,int y)
  w=&m->windows[i];t=wm_theme_get(m->theme);
  m->focused=i;
  (void)wm_raise(m,w);
+ if(wm_control(m,w,x,y)) return 1;
  if(x>=w->x+w->width-12 && y>=w->y+w->height-12) {
   m->pointer_mode=2;
  } else if(y<w->y+t->border_width+t->title_height) {
@@ -114,6 +194,7 @@ int wm_pointer_move(wm *m,int x,int y)
  w=&m->windows[m->pointer_window];
  dx=x-m->pointer_x;dy=y-m->pointer_y;
  if(!dx && !dy) return 0;
+ if(w->maximized) return 0;
  if(m->pointer_mode==1) {
   w->x+=dx;w->y+=dy;
  } else {
@@ -138,7 +219,7 @@ void wm_draw_window(wm *m,const wm_window *w)
 {
  const wm_theme *t;
  int i,cy,control_x;
- if(!m || !m->surface || !w || !w->visible) return;
+ if(!m || !m->surface || !w || !w->visible || w->closed) return;
  t=wm_theme_get(m->theme);
  gfx_rect(m->surface,w->x,w->y,w->width,w->height,t->frame);
  gfx_rect(m->surface,w->x+t->border_width,w->y+t->border_width,

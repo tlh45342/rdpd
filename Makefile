@@ -16,7 +16,7 @@ all: $(TARGET)
 $(TARGET): $(SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(SOURCES) -o $@ $(LDLIBS)
 clean:
-	$(RM) rdpd rdpd.exe test_gfx test_gfx.exe test_wm test_wm.exe test_composition test_composition.exe
+	$(RM) rdpd rdpd.exe test_gfx test_gfx.exe test_wm test_wm.exe test_composition test_composition.exe test_controls test_controls.exe
 test: all
 	python tests/smoke.py
 	python tests/protocol.py
@@ -30,3 +30,6 @@ test: all
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_composition.c src/wm.c src/gfx.c -o test_composition$(EXEEXT)
 	./test_composition$(EXEEXT)
 	$(RM) test_composition$(EXEEXT)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_controls.c src/wm.c src/gfx.c -o test_controls$(EXEEXT)
+	./test_controls$(EXEEXT)
+	$(RM) test_controls$(EXEEXT)

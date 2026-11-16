@@ -14,11 +14,14 @@ typedef struct wm_theme {
 typedef struct wm_window wm_window;
 typedef void (*wm_click_fn)(wm_window *,int,int,void *);
 typedef void (*wm_paint_fn)(wm_window *,gfx_surface *,void *);
+typedef int (*wm_close_fn)(wm_window *,void *);
 struct wm_window {
- int x,y,width,height,visible;
+ int x,y,width,height,visible,minimized,maximized,closed;
+ int restore_x,restore_y,restore_width,restore_height;
  const char *title;
  wm_click_fn click;
  wm_paint_fn paint;
+ wm_close_fn close_request;
  void *userdata;
 };
 typedef struct wm {
@@ -42,5 +45,10 @@ int wm_pointer_move(wm *manager,int x,int y);
 void wm_pointer_up(wm *manager);
 void wm_draw_window(wm *manager,const wm_window *window);
 void wm_window_set_paint(wm_window *window,wm_paint_fn paint);
+void wm_window_set_close(wm_window *window,wm_close_fn callback);
+int wm_window_minimize(wm *manager,wm_window *window);
+int wm_window_restore(wm *manager,wm_window *window);
+int wm_window_toggle_maximize(wm *manager,wm_window *window);
+int wm_window_close(wm *manager,wm_window *window);
 void wm_draw(wm *manager);
 #endif
