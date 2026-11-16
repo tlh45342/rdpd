@@ -1,0 +1,7 @@
+# Build 0032 — Arbitrator-owned session dispatch
+
+The Linux `session_arbitrator` now allocates a private 32-bit surface and owns a real `session` (window manager, application registry, calculator). After HELLO and SESSION_OPEN, APP_LAUNCH invokes `session_launch`; POINTER routes to `session_pointer`; WINDOW_ACTION routes to the window manager. A STATUS response carries code 0 (accepted), 1 (not implemented), or 2 (failed), with a correlation request ID. APP_LAUNCH detail returns the number of allocated window slots. KEY remains unimplemented. Input pointer kind 0=move, 1=down, 2=up maps to the existing session API kind 2=move, 1=down, 3=up.
+
+The session and surface are freed on disconnect, including incomplete sessions. The 4096x4096 dimension limit prevents unbounded allocation. The existing RDP server continues to own its own in-process desktop: **the network RDP connection is not yet routed through the arbitrator**, and the arbitrator has no pixel-sharing or FRAME_DAMAGE publication. Thus this is a genuine separate-process session dispatch test, not a complete multiprocess desktop.
+
+The Unix-socket integration test now checks calculator launch, pointer input, minimize, restore, close, relaunch, unknown app rejection, heartbeat, and session close. Windows retains the unsupported Unix-socket stub. Next sprint: shared framebuffer transport and RDP-side IPC client, then move desktop ownership fully across the boundary. Before production use: peer credentials, concurrent clients, per-session timeouts and memory limits.

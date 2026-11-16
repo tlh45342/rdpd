@@ -14,8 +14,8 @@ HEADERS = include/widget.h include/icon.h include/mac_icons.h resources/icons/ma
 .PHONY: all clean test
 ARBITRATOR = session_arbitrator$(EXEEXT)
 all: $(TARGET) $(ARBITRATOR)
-$(ARBITRATOR): src/session_arbitrator.c src/ipc.c src/ipc_transport.c include/ipc.h include/ipc_transport.h
-	$(CC) $(CPPFLAGS) $(CFLAGS) src/session_arbitrator.c src/ipc.c src/ipc_transport.c -o $@ $(LDLIBS)
+$(ARBITRATOR): src/session_arbitrator.c src/ipc.c src/ipc_transport.c src/session.c src/calculator.c src/app_registry.c src/widget.c src/wm.c src/gfx.c include/ipc.h include/ipc_transport.h include/session.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) src/session_arbitrator.c src/ipc.c src/ipc_transport.c src/session.c src/calculator.c src/app_registry.c src/widget.c src/wm.c src/gfx.c -o $@ $(LDLIBS)
 $(TARGET): $(SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(SOURCES) -o $@ $(LDLIBS)
 clean:
