@@ -23,9 +23,35 @@ static const unsigned char glyphs[][5]={
 {0x36,0x49,0x49,0x49,0x36},{0x06,0x49,0x49,0x29,0x1e},
 {0,0x36,0x36,0,0},{0x08,0x08,0x08,0x08,0x08},{0,0x40,0x40,0,0}
 };
+uint32_t gfx_from_rgb565(uint16_t c)
+{
+ uint32_t r=(c>>11)&31,g=(c>>5)&63,b=c&31;
+ return ((r*255/31)<<16)|((g*255/63)<<8)|(b*255/31);
+}
+/* RGBA input is 0xRRGGBBAA, destination 0x00RRGGBB. */
+uint32_t gfx_blend_rgba(uint32_t dst,uint32_t rgba)
+{
+ unsigned a=rgba&255,inv=255-a;
+ unsigned r=(((rgba>>24)&255)*a+((dst>>16)&255)*inv+127)/255;
+ unsigned g=(((rgba>>16)&255)*a+((dst>>8)&255)*inv+127)/255;
+ unsigned b=(((rgba>>8)&255)*a+(dst&255)*inv+127)/255;
+ return (r<<16)|(g<<8)|b;
+}
+void gfx_rect_rgb(gfx_surface *s,int x,int y,int w,int h,uint32_t color)
+{
+ int row,col;
+ if(!s || !s->pixels || !s->stride || !s->width || !s->height || w<=0 || h<=0)return;
+ if(x<0){w+=x;x=0;} if(y<0){h+=y;y=0;}
+ if((unsigned)x>=s->width || (unsigned)y>=s->height)return;
+ if((unsigned)w>s->width-(unsigned)x)w=(int)(s->width-(unsigned)x);
+ if((unsigned)h>s->height-(unsigned)y)h=(int)(s->height-(unsigned)y);
+ for(row=0;row<h;row++)for(col=0;col<w;col++)
+  s->pixels[(size_t)(y+row)*s->stride+(unsigned)x+(unsigned)col]=color&0xffffff;
+}
 void gfx_rect(gfx_surface *s,int x,int y,int w,int h,uint16_t color)
 {
     int row,col;
+    uint32_t rgb=gfx_from_rgb565(color);
     if (!s || !s->pixels || !s->stride || !s->width || !s->height || w<=0 || h<=0) return;
     if (x<0) {w+=x;x=0;}
     if (y<0) {h+=y;y=0;}
@@ -35,7 +61,7 @@ void gfx_rect(gfx_surface *s,int x,int y,int w,int h,uint16_t color)
     if (w<=0 || h<=0) return;
     for (row=0;row<h;row++)
         for (col=0;col<w;col++)
-            s->pixels[(size_t)(y+row)*s->stride+(unsigned)x+(unsigned)col]=color;
+            s->pixels[(size_t)(y+row)*s->stride+(unsigned)x+(unsigned)col]=rgb;
 }
 void gfx_clear(gfx_surface *s,uint16_t color)
 {

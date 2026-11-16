@@ -43,7 +43,7 @@ class RDPClient:
         self.host, self.port, self.timeout = host, port, timeout
         self.sock = None
         self.width, self.height = 1024, 768
-        self.pixels = bytearray(self.width * self.height * 2)
+        self.pixels = bytearray(self.width * self.height * 4)
 
     def __enter__(self):
         return self.connect()
@@ -112,19 +112,19 @@ class RDPClient:
             if share[14] != 2 or share[18:22] != bytes.fromhex("01 00 01 00"):
                 raise ValueError("expected bitmap update")
             left, top, right, bottom, width, height, bpp, flags, size = struct.unpack_from("<9H",share,22)
-            if bpp != 16 or flags or size != width*height*2 or len(share[40:]) != size:
+            if bpp != 32 or flags or size != width*height*4 or len(share[40:]) != size:
                 raise ValueError("unsupported bitmap format")
             if right != left+width-1 or bottom != top+height-1 or right >= self.width or bottom >= self.height:
                 raise ValueError("invalid bitmap bounds")
             data = share[40:]
             for row in range(height):
-                dest = ((top+height-1-row)*self.width + left)*2
-                self.pixels[dest:dest+width*2] = data[row*width*2:(row+1)*width*2]
+                dest = ((top+height-1-row)*self.width + left)*4
+                self.pixels[dest:dest+width*4] = data[row*width*4:(row+1)*width*4]
         return self
 
     def pixel(self, x, y):
-        offset = (y*self.width+x)*2
-        return int.from_bytes(self.pixels[offset:offset+2],"little")
+        offset = (y*self.width+x)*4
+        return int.from_bytes(self.pixels[offset:offset+4],"little")
 
     def click(self, x, y):
         event = (bytes(4) + (0x8001).to_bytes(2,"little")
@@ -143,9 +143,7 @@ class RDPClient:
             rgb.append(0)
             for x in range(self.width):
                 value = self.pixel(x,y)
-                rgb.extend(((value>>11 & 31)*255//31,
-                            (value>>5 & 63)*255//63,
-                            (value & 31)*255//31))
+                rgb.extend(((value>>16)&255,(value>>8)&255,value&255))
         with open(path,"wb") as f:
             f.write(b"\x89PNG\\r\\n\x1a\\n")
             f.write(chunk(b"IHDR",struct.pack(">IIBBBBB",self.width,self.height,8,2,0,0,0)))

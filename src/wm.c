@@ -263,11 +263,11 @@ void wm_draw_window(wm *m,const wm_window *w)
   int left=t->border_width,top=t->border_width+t->title_height;
   int cw=w->width-2*left,ch=w->height-top-t->border_width;
   size_t count=(size_t)cw*(size_t)ch;
-  uint16_t *pixels;
+  uint32_t *pixels;
   gfx_surface client;
   int row,col;
   if(cw>4096 || ch>4096 || count>1048576) return;
-  pixels=(uint16_t *)malloc(count*sizeof(*pixels));
+  pixels=(uint32_t *)malloc(count*sizeof(*pixels));
   if(!pixels) return;
   client.pixels=pixels;client.width=(unsigned)cw;
   client.height=(unsigned)ch;client.stride=(unsigned)cw;

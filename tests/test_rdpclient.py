@@ -24,10 +24,11 @@ try:
     with RDPClient("127.0.0.1", port) as client:
         client.activate()
         assert (client.width, client.height) == (1024,768)
-        assert client.pixel(200,200) == 0xffff
+        assert client.pixel(200,200) == 0xffffff
         client.click(390,340)
-        assert client.pixel(400,340) == 0xf800
+        assert client.pixel(400,340) == 0xff0000
         print("PASS: reusable RDP client activation, framebuffer and mouse redraw")
 finally:
     server.terminate()
     server.communicate(timeout=6)
+

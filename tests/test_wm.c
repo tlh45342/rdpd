@@ -9,7 +9,7 @@ static void on_click(wm_window *w,int x,int y,void *data)
 }
 int main(void)
 {
- unsigned short pixels[200*160];
+ uint32_t pixels[200*160];
  gfx_surface surface={pixels,200,160,200};
  wm manager;
  wm_window *a,*b;
@@ -67,3 +67,4 @@ int main(void)
  puts("PASS: WM stable handles, raise/focus, z-order hit-testing, themes and pointer capture");
  return 0;
 }
+

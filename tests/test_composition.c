@@ -8,7 +8,7 @@ static void paint(wm_window *w,gfx_surface *s,void *userdata)
 }
 int main(void)
 {
- uint16_t pixels[160*120];
+ uint32_t pixels[160*120];
  uint16_t green=0x07e0,red=0xf800;
  gfx_surface s={pixels,160,120,160};
  wm m;
@@ -21,17 +21,17 @@ int main(void)
  wm_window_set_paint(b,paint);
  gfx_clear(&s,0);
  wm_draw(&m);
- assert(pixels[70*160+50]==0xf800);
- assert(pixels[70*160+20]==0x07e0);
+ assert(pixels[70*160+50]==gfx_from_rgb565(0xf800));
+ assert(pixels[70*160+20]==gfx_from_rgb565(0x07e0));
  assert(wm_raise(&m,a));
  gfx_clear(&s,0);
  wm_draw(&m);
- assert(pixels[70*160+50]==0x07e0);
- assert(pixels[70*160+115]==0xf800);
+ assert(pixels[70*160+50]==gfx_from_rgb565(0x07e0));
+ assert(pixels[70*160+115]==gfx_from_rgb565(0xf800));
  a->x=-15;
  gfx_clear(&s,0);
  wm_draw(&m);
- assert(pixels[70*160+5]==0x07e0);
+ assert(pixels[70*160+5]==gfx_from_rgb565(0x07e0));
  puts("PASS: independent window surfaces, occlusion, raise and screen clipping");
  return 0;
 }

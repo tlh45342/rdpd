@@ -16,7 +16,7 @@ all: $(TARGET)
 $(TARGET): $(SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(SOURCES) -o $@ $(LDLIBS)
 clean:
-	$(RM) rdpd rdpd.exe test_gfx test_gfx.exe test_wm test_wm.exe test_composition test_composition.exe test_controls test_controls.exe test_widgets test_widgets.exe test_apps test_apps.exe test_session test_session.exe test_desktop_input test_desktop_input.exe test_mac_icons test_mac_icons.exe
+	$(RM) rdpd rdpd.exe test_gfx test_gfx.exe test_wm test_wm.exe test_composition test_composition.exe test_controls test_controls.exe test_widgets test_widgets.exe test_apps test_apps.exe test_session test_session.exe test_desktop_input test_desktop_input.exe test_mac_icons test_mac_icons.exe test_color32 test_color32.exe
 test: all
 	python tests/smoke.py
 	python tests/protocol.py
@@ -48,3 +48,7 @@ test: all
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_mac_icons.c src/mac_icons.c src/widget.c src/wm.c src/gfx.c -o test_mac_icons$(EXEEXT)
 	./test_mac_icons$(EXEEXT)
 	$(RM) test_mac_icons$(EXEEXT)
+
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_color32.c src/gfx.c -o test_color32$(EXEEXT)
+	./test_color32$(EXEEXT)
+	$(RM) test_color32$(EXEEXT)

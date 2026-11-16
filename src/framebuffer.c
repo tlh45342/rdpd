@@ -3,8 +3,8 @@
 #include "gfx.h"
 #include <string.h>
 
-/* Synthetic desktop: a fixed RGB565 blue framebuffer. */
-static unsigned short framebuffer[RDPD_WIDTH * RDPD_HEIGHT];
+/* Synthetic desktop: a 32-bit RGB888 desktop framebuffer. */
+static uint32_t framebuffer[RDPD_WIDTH * RDPD_HEIGHT];
 static int initialized;
 
 static void w16(unsigned char *p, unsigned v)
@@ -46,7 +46,7 @@ int rdpd_build_bitmap_tile(unsigned index, unsigned char *out,
     y=(index/RDPD_TILES_X)*RDPD_TILE_HEIGHT;
     w=RDPD_WIDTH-x<RDPD_TILE_WIDTH?RDPD_WIDTH-x:RDPD_TILE_WIDTH;
     h=RDPD_HEIGHT-y<RDPD_TILE_HEIGHT?RDPD_HEIGHT-y:RDPD_TILE_HEIGHT;
-    pixels=(size_t)w*h*2;
+    pixels=(size_t)w*h*4;
     /* Share Data header (18), Update (4), Bitmap rectangle (18). */
     share_len=18+4+18+pixels;
     user_len=share_len;
@@ -76,14 +76,14 @@ int rdpd_build_bitmap_tile(unsigned index, unsigned char *out,
     w16(out+pos,x);w16(out+pos+2,y);
     w16(out+pos+4,x+w-1);w16(out+pos+6,y+h-1);
     w16(out+pos+8,w);w16(out+pos+10,h);
-    w16(out+pos+12,16); /* bitsPerPixel */
+    w16(out+pos+12,32); /* bitsPerPixel */
     w16(out+pos+14,0); /* uncompressed */
     w16(out+pos+16,(unsigned)pixels);
     pos+=18;
     /* RDP uncompressed bitmap scanlines are bottom-up. */
     for (row=0;row<h;row++)
         for (col=0;col<w;col++)
-            w16(out+pos+((size_t)row*w+col)*2,
+            w32(out+pos+((size_t)row*w+col)*4,
                 framebuffer[(size_t)(y+h-1-row)*RDPD_WIDTH+x+col]);
     *used=total;
     return 0;

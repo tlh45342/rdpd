@@ -123,11 +123,11 @@ try:
                 int.from_bytes(rect[i:i+2],"little") for i in range(0,18,2)]
             assert (left,top) == ((tile % 16)*64,(tile // 16)*32)
             assert right == left+width-1 and bottom == top+height-1
-            assert bpp == 16 and flags == 0 and bitmap_len == width*height*2
+            assert bpp == 32 and flags == 0 and bitmap_len == width*height*4
             assert len(share[40:]) == bitmap_len, "bitmap pixel length mismatch"
             if left <= 200 < left+width and top <= 200 < top+height:
-                pixel = ((top+height-1-200)*width+(200-left))*2
-                assert share[40+pixel:42+pixel] == bytes.fromhex("ff ff"), "white window background missing"
+                pixel = ((top+height-1-200)*width+(200-left))*4
+                assert share[40+pixel:44+pixel] == bytes.fromhex("ff ff ff 00"), "white window background missing"
             rectangles.append((left,top,width,height))
         assert sum(w*h for _,_,w,h in rectangles) == 1024*768
         print("PASS: 384 desktop bitmap tiles reconstruct 1024x768 framebuffer")
@@ -145,9 +145,9 @@ try:
             top=int.from_bytes(rect[2:4],"little")
             width=int.from_bytes(rect[8:10],"little")
             height=int.from_bytes(rect[10:12],"little")
-            off=40+((top+height-1-y)*width+x-left)*2
-            return int.from_bytes(share[off:off+2],"little")
-        assert pixel_at(refreshed,400,340)==0xf800, "second window button did not change color"
+            off=40+((top+height-1-y)*width+x-left)*4
+            return int.from_bytes(share[off:off+4],"little")
+        assert pixel_at(refreshed,400,340)==0xff0000, "second window button did not change color"
         print("PASS: mouse click changes button pixels and triggers redraw")
         # Diagnostic only: server should accept a well-framed 335-byte SendDataRequest.
         print("PASS: sent 335-byte MCS SendDataRequest diagnostic fixture")

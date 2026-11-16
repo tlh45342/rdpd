@@ -1,7 +1,7 @@
 #include "session.h"
 #include <assert.h>
 #include <stdio.h>
-static uint16_t pixels[1024*768];
+static uint32_t pixels[1024*768];
 int main(void)
 {
  gfx_surface surface={pixels,1024,768,1024};

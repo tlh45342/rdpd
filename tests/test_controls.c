@@ -8,7 +8,7 @@ static int close_request(wm_window *w,void *data)
 }
 int main(void)
 {
- uint16_t pixels[800*600];
+ uint32_t pixels[800*600];
  gfx_surface s={pixels,800,600,800};
  wm m;
  wm_window *a,*b;

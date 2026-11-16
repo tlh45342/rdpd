@@ -8,7 +8,7 @@ int main(void)
 {
  calculator c;
  app_registry r;
- uint16_t pixels[300*300];
+ uint32_t pixels[300*300];
  gfx_surface s={pixels,300,300,300};
  calculator_init(&c);
  calculator_key(&c,'1');calculator_key(&c,'2');

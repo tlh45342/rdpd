@@ -15,7 +15,7 @@ void mac_icon_draw(gfx_surface *s,int x,int y,mac_icon_id id)
    char c=resource->rows[row][col];
    unsigned index=(unsigned)(c<='9'?c-'0':c-'a'+10);
    if(!index || index>15 || xx<0 || (unsigned)xx>=s->width)continue;
-   s->pixels[(size_t)yy*s->stride+(unsigned)xx]=resource->palette[index];
+   s->pixels[(size_t)yy*s->stride+(unsigned)xx]=gfx_from_rgb565(resource->palette[index]);
   }
  }
 }

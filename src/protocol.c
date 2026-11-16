@@ -184,7 +184,7 @@ int rdpd_handle_connection(uintptr_t handle)
                                 puts("  Button changed: sending framebuffer update");
                             }
                             {
-                                unsigned char bitmap_packet[8192];
+                                unsigned char bitmap_packet[16384];
                                 unsigned tile;
                                 size_t bitmap_length;
                                 for (tile=0;tile<RDPD_TILE_COUNT;tile++) {
@@ -194,7 +194,7 @@ int rdpd_handle_connection(uintptr_t handle)
                                         return -1;
                                     }
                                 }
-                                printf("  framebuffer sent: %ux%u RGB565, %u bitmap rectangles\n",
+                                printf("  framebuffer sent: %ux%u RGB888 32bpp, %u bitmap rectangles\n",
                                        RDPD_WIDTH,RDPD_HEIGHT,RDPD_TILE_COUNT);
                                 fflush(stdout);
                             }
