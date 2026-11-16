@@ -26,7 +26,7 @@ try:
         assert (client.width, client.height) == (800,600)
         assert client.pixel(200,200) == 0xffff
         client.click(390,340)
-        assert client.pixel(280,320) == 0x07e0
+        assert client.pixel(400,340) == 0xf800
         print("PASS: reusable RDP client activation, framebuffer and mouse redraw")
 finally:
     server.terminate()

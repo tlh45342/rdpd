@@ -147,7 +147,7 @@ try:
             height=int.from_bytes(rect[10:12],"little")
             off=40+((top+height-1-y)*width+x-left)*2
             return int.from_bytes(share[off:off+2],"little")
-        assert pixel_at(refreshed,280,320)==0x07e0, "button did not change color"
+        assert pixel_at(refreshed,400,340)==0xf800, "second window button did not change color"
         print("PASS: mouse click changes button pixels and triggers redraw")
         # Diagnostic only: server should accept a well-framed 335-byte SendDataRequest.
         print("PASS: sent 335-byte MCS SendDataRequest diagnostic fixture")

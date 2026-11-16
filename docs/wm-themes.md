@@ -25,3 +25,16 @@ The WM now supports dragging a window by its title bar and resizing via its bott
 ## Z-order and focus (build 0020)
 
 Window storage remains in stable slots so window pointers and callback userdata do not change when windows are raised. z_order[] stores back-to-front slot indices. Hit-testing scans front-to-back; painting scans back-to-front. wm_raise() moves a visible window to the front and focuses it. Both legacy click and pointer-down paths raise the hit window. A click on an exposed portion of a background window therefore activates it without invalidating existing handles. There is no multi-window demo yet; dedicated tests cover overlap, raise, focus and pointer selection.
+
+
+## Multi-window composition (build 0021)
+
+The demo now creates two overlapping windows, each with independent application
+state and a local paint callback. WM draws frames and invokes each callback
+into an isolated RGB565 client surface; only client pixels are copied into the
+desktop framebuffer. Windows are painted back-to-front in z-order, so the front
+window correctly occludes both the frame and content of windows beneath it.
+The client surface is allocated per repaint for now (bounded to 1,048,576
+pixels); a reusable surface and dirty rectangles are future optimizations.
+Click exposed portions of either window to raise it. Title-bar dragging and
+bottom-right resizing remain available.

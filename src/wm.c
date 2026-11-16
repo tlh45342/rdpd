@@ -1,5 +1,6 @@
 #include "wm.h"
 #include <string.h>
+#include <stdlib.h>
 /* Theme values are RGB565. Frame layout is data, never application logic. */
 static const wm_theme themes[WM_THEME_COUNT]={
  {"classic",0x0000,0x19a7,0xffff,0xce79,0x0000,0xce79,4,38,1,0},
@@ -129,6 +130,10 @@ void wm_pointer_up(wm *m)
  if(!m) return;
  m->pointer_window=-1;m->pointer_mode=0;
 }
+void wm_window_set_paint(wm_window *w,wm_paint_fn paint)
+{
+ if(w) w->paint=paint;
+}
 void wm_draw_window(wm *m,const wm_window *w)
 {
  const wm_theme *t;
@@ -146,6 +151,35 @@ void wm_draw_window(wm *m,const wm_window *w)
   control_x=t->controls_left?w->x+12+i*22:w->x+w->width-22-i*22;
   gfx_rect(m->surface,control_x,cy,14,14,
    t->controls_left?(i==0?0xf800:(i==1?0xffc0:0x07e0)):t->control);
+ }
+ /* Paint application content into a window-local surface, then composite
+    only the client rectangle. This prevents content leaking over frames
+    or into neighboring windows, and respects the z-order draw sequence. */
+ if(w->paint && w->width>2*t->border_width &&
+    w->height>t->title_height+2*t->border_width) {
+  int left=t->border_width,top=t->border_width+t->title_height;
+  int cw=w->width-2*left,ch=w->height-top-t->border_width;
+  size_t count=(size_t)cw*(size_t)ch;
+  uint16_t *pixels;
+  gfx_surface client;
+  int row,col;
+  if(cw>4096 || ch>4096 || count>1048576) return;
+  pixels=(uint16_t *)malloc(count*sizeof(*pixels));
+  if(!pixels) return;
+  client.pixels=pixels;client.width=(unsigned)cw;
+  client.height=(unsigned)ch;client.stride=(unsigned)cw;
+  gfx_clear(&client,t->body);
+  w->paint((wm_window *)w,&client,w->userdata);
+  for(row=0;row<ch;row++) {
+   int dy=w->y+top+row;
+   if(dy<0 || (unsigned)dy>=m->surface->height) continue;
+   for(col=0;col<cw;col++) {
+    int dx=w->x+left+col;
+    if(dx>=0 && (unsigned)dx<m->surface->width)
+     m->surface->pixels[(size_t)dy*m->surface->stride+(unsigned)dx]=pixels[(size_t)row*cw+(unsigned)col];
+   }
+  }
+  free(pixels);
  }
 }
 void wm_draw(wm *m)
