@@ -4,6 +4,8 @@
 #include "widget.h"
 #include "icon.h"
 #include "framebuffer.h"
+#include "calculator.h"
+#include "app_registry.h"
 #include <stdlib.h>
 
 /* Application state stays outside WM. Painting uses window-local surfaces. */
@@ -12,6 +14,34 @@ static wm manager;
 static wm_window *main_window,*second_window;
 static int clicked,second_clicked;
 static widget main_button,second_button;
+static wm_window *calc_window;
+static calculator calc;
+static app_registry apps;
+static int icon_selected;
+static int launch_calculator(void *context)
+{
+ (void)context;
+ if(calc_window && !calc_window->closed) {
+  if(calc_window->minimized) return wm_window_restore(&manager,calc_window);
+  return wm_raise(&manager,calc_window);
+ }
+ calculator_init(&calc);
+ calc_window=wm_window_create(&manager,660,235,300,345,"CALCULATOR",0,0);
+ if(!calc_window) return 0;
+ return 1;
+}
+static void calc_click(wm_window *w,int x,int y,void *context)
+{
+ const wm_theme *t=wm_theme_get(manager.theme);
+ (void)w;(void)context;
+ (void)calculator_click(&calc,x-t->border_width,y-t->border_width-t->title_height);
+}
+static void calc_paint(wm_window *w,gfx_surface *s,void *context)
+{
+ (void)w;(void)context;
+ calculator_paint(&calc,s);
+}
+
 
 static void main_click(wm_window *w,int x,int y,void *unused)
 {
@@ -51,6 +81,9 @@ void rdpd_desktop_set_surface(gfx_surface *surface)
  main_button=widget_button(85,105,260,54,"CLICK ME","CLICKED",0x3a8e,0x07e0);
  second_button=widget_button(30,75,160,44,"PRESS ME","ACTIVE",0x2190,0xf800);
  wm_init(&manager,surface,theme);
+ app_registry_init(&apps);
+ (void)app_register(&apps,"calculator",launch_calculator,0);
+ calc_window=0;icon_selected=0;
  main_window=wm_window_create(&manager,75,70,530,395,
                               "RDPD DESKTOP",main_click,0);
  second_window=wm_window_create(&manager,355,205,360,275,
@@ -65,7 +98,9 @@ void rdpd_desktop_draw(void)
  gfx_rect(canvas,0,RDPD_HEIGHT-40,RDPD_WIDTH,40,0x1082);
  gfx_rect(canvas,12,RDPD_HEIGHT-34,95,27,0x4a69);
  gfx_text(canvas,23,RDPD_HEIGHT-28,"START",0xffff);
+ if(icon_selected) gfx_rect(canvas,846,91,56,78,0x07ff);
  icon_draw_desktop(canvas,850,95);
+ gfx_text(canvas,826,150,"CALCULATOR",0xffff);
  wm_draw(&manager);
  gfx_text(canvas,150,RDPD_HEIGHT-30,"RDPD 0.0.1",0xffff);
  if(main_window->minimized)
@@ -77,11 +112,25 @@ int rdpd_desktop_pointer(unsigned x,unsigned y,int kind)
 {
  int before=clicked,second_before=second_clicked,changed=0;
  if(kind==1) {
-  if(y>=RDPD_HEIGHT-40 && main_window->minimized && x>=310 && x<520)
+  /* First click selects, second click activates. Pointer-down events are
+     sufficient for this simple desktop; timed double-clicks come later. */
+  if(x>=826 && x<925 && y>=91 && y<171 && wm_hit_test(&manager,(int)x,(int)y)<0) {
+   if(icon_selected) {
+    changed=app_launch(&apps,"calculator");
+    if(changed && calc_window) {
+     calc_window->click=calc_click;
+     wm_window_set_paint(calc_window,calc_paint);
+    }
+    icon_selected=0;
+   } else {icon_selected=1;changed=1;}
+  } else if(y>=RDPD_HEIGHT-40 && main_window->minimized && x>=310 && x<520)
    changed=wm_window_restore(&manager,main_window);
   else if(y>=RDPD_HEIGHT-40 && second_window->minimized && x>=540 && x<790)
    changed=wm_window_restore(&manager,second_window);
-  else changed=wm_pointer_down(&manager,(int)x,(int)y);
+  else {
+   if(icon_selected) {icon_selected=0;changed=1;}
+   if(wm_pointer_down(&manager,(int)x,(int)y)) changed=1;
+  }
  }
  else if(kind==2) changed=wm_pointer_move(&manager,(int)x,(int)y);
  else if(kind==3) wm_pointer_up(&manager);

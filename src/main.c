@@ -19,6 +19,6 @@ int main(int argc, char **argv)
     }
     signal(SIGINT, stop_server);
     signal(SIGTERM, stop_server);
-    printf("rdpd 0.0.1 build 0023\n");
+    printf("rdpd 0.0.1 build 0024\n");
     return rdpd_serve((unsigned short)port, &running);
 }
