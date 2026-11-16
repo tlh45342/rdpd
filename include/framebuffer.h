@@ -10,7 +10,12 @@ void rdpd_framebuffer_rect(int x,int y,int width,int height,unsigned short color
 #define RDPD_TILES_X ((RDPD_WIDTH+RDPD_TILE_WIDTH-1)/RDPD_TILE_WIDTH)
 #define RDPD_TILES_Y ((RDPD_HEIGHT+RDPD_TILE_HEIGHT-1)/RDPD_TILE_HEIGHT)
 #define RDPD_TILE_COUNT (RDPD_TILES_X * RDPD_TILES_Y)
-/* Build an uncompressed 16bpp RDP Bitmap Update for one desktop tile. */
+/* Detect dirty 64x32 tiles against last transmitted frame.
+   First call marks every tile. Call commit only after successful send. */
+void rdpd_framebuffer_dirty_reset(void);
+int rdpd_framebuffer_tile_dirty(unsigned index);
+void rdpd_framebuffer_tile_commit(unsigned index);
+/* Build an uncompressed 32bpp RDP Bitmap Update for one desktop tile. */
 int rdpd_build_bitmap_tile(unsigned index, unsigned char *out,
                            size_t capacity, size_t *used);
 #endif

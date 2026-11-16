@@ -108,6 +108,7 @@ int rdpd_handle_connection(uintptr_t handle,uint64_t session_id)
     size_t length;
     unsigned long idle_timeouts=0;
     unsigned long input_packets_total=0;
+    rdpd_framebuffer_dirty_reset();
 #ifdef _WIN32
     DWORD timeout = 3000;
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout));
@@ -220,15 +221,20 @@ int rdpd_handle_connection(uintptr_t handle,uint64_t session_id)
                                 unsigned char bitmap_packet[16384];
                                 unsigned tile;
                                 size_t bitmap_length;
+                                unsigned sent=0;
                                 for (tile=0;tile<RDPD_TILE_COUNT;tile++) {
+                                    if(state==7 && status==2 &&
+                                       !rdpd_framebuffer_tile_dirty(tile))continue;
                                     if (rdpd_build_bitmap_tile(tile,bitmap_packet,sizeof(bitmap_packet),&bitmap_length)!=0 ||
                                         send_exact(fd,bitmap_packet,bitmap_length)!=0) {
                                         puts("  failed to send framebuffer tile");
                                         return -1;
                                     }
+                                    rdpd_framebuffer_tile_commit(tile);
+                                    sent++;
                                 }
-                                printf("  framebuffer sent: %ux%u RGB888 32bpp, %u bitmap rectangles\n",
-                                       RDPD_WIDTH,RDPD_HEIGHT,RDPD_TILE_COUNT);
+                                printf("  framebuffer sent: %ux%u RGB888 32bpp, %u dirty tiles\n",
+                                       RDPD_WIDTH,RDPD_HEIGHT,sent);
                                 fflush(stdout);
                             }
 #ifdef _WIN32

@@ -103,23 +103,35 @@ class RDPClient:
         self.receive_frame()
         return self
 
-    def receive_frame(self, count=384):
-        for _ in range(count):
-            frame = tpkt(self.sock)
-            if frame[7] != 0x68 or not (frame[13] & 0x80):
-                raise ValueError("expected bitmap SendDataIndication")
-            share = frame[15:]
-            if share[14] != 2 or share[18:22] != bytes.fromhex("01 00 01 00"):
-                raise ValueError("expected bitmap update")
-            left, top, right, bottom, width, height, bpp, flags, size = struct.unpack_from("<9H",share,22)
-            if bpp != 32 or flags or size != width*height*4 or len(share[40:]) != size:
-                raise ValueError("unsupported bitmap format")
-            if right != left+width-1 or bottom != top+height-1 or right >= self.width or bottom >= self.height:
-                raise ValueError("invalid bitmap bounds")
-            data = share[40:]
-            for row in range(height):
-                dest = ((top+height-1-row)*self.width + left)*4
-                self.pixels[dest:dest+width*4] = data[row*width*4:(row+1)*width*4]
+    def receive_frame(self, count=384, sparse=False):
+        # Initial activation is a full frame; later updates are sparse.
+        old_timeout = self.sock.gettimeout()
+        try:
+            for i in range(count):
+                if sparse:
+                    self.sock.settimeout(min(old_timeout or 1.0, 0.35))
+                try:
+                    frame = tpkt(self.sock)
+                except socket.timeout:
+                    if sparse:
+                        break
+                    raise
+                if frame[7] != 0x68 or not (frame[13] & 0x80):
+                    raise ValueError("expected bitmap SendDataIndication")
+                share = frame[15:]
+                if share[14] != 2 or share[18:22] != bytes.fromhex("01 00 01 00"):
+                    raise ValueError("expected bitmap update")
+                left, top, right, bottom, width, height, bpp, flags, size = struct.unpack_from("<9H",share,22)
+                if bpp != 32 or flags or size != width*height*4 or len(share[40:]) != size:
+                    raise ValueError("unsupported bitmap format")
+                if right != left+width-1 or bottom != top+height-1 or right >= self.width or bottom >= self.height:
+                    raise ValueError("invalid bitmap bounds")
+                data = share[40:]
+                for row in range(height):
+                    dest = ((top+height-1-row)*self.width + left)*4
+                    self.pixels[dest:dest+width*4] = data[row*width*4:(row+1)*width*4]
+        finally:
+            self.sock.settimeout(old_timeout)
         return self
 
     def pixel(self, x, y):
@@ -131,7 +143,7 @@ class RDPClient:
                  + (0x9000).to_bytes(2,"little")
                  + x.to_bytes(2,"little") + y.to_bytes(2,"little"))
         self.send(share_data(28, b"\x01\x00\x00\x00" + event))
-        self.receive_frame()
+        self.receive_frame(sparse=True)
         return self
 
     def save_png(self, path):

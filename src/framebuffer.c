@@ -6,6 +6,43 @@
 /* Synthetic desktop: a 32-bit RGB888 desktop framebuffer. */
 static uint32_t framebuffer[RDPD_WIDTH * RDPD_HEIGHT];
 static int initialized;
+static uint32_t previous[RDPD_WIDTH*RDPD_HEIGHT];
+static unsigned char valid[RDPD_TILE_COUNT];
+void rdpd_framebuffer_dirty_reset(void)
+{
+ memset(valid,0,sizeof(valid));
+}
+static void tile_bounds(unsigned index,unsigned *x,unsigned *y,unsigned *w,unsigned *h)
+{
+ *x=(index%RDPD_TILES_X)*RDPD_TILE_WIDTH;
+ *y=(index/RDPD_TILES_X)*RDPD_TILE_HEIGHT;
+ *w=RDPD_WIDTH-*x<RDPD_TILE_WIDTH?RDPD_WIDTH-*x:RDPD_TILE_WIDTH;
+ *h=RDPD_HEIGHT-*y<RDPD_TILE_HEIGHT?RDPD_HEIGHT-*y:RDPD_TILE_HEIGHT;
+}
+int rdpd_framebuffer_tile_dirty(unsigned index)
+{
+ unsigned x,y,w,h,row;
+ if(index>=RDPD_TILE_COUNT)return 0;
+ tile_bounds(index,&x,&y,&w,&h);
+ if(!valid[index])return 1;
+ for(row=0;row<h;row++)
+  if(memcmp(framebuffer+(size_t)(y+row)*RDPD_WIDTH+x,
+            previous+(size_t)(y+row)*RDPD_WIDTH+x,
+            (size_t)w*sizeof(uint32_t))!=0)return 1;
+ return 0;
+}
+void rdpd_framebuffer_tile_commit(unsigned index)
+{
+ unsigned x,y,w,h,row;
+ if(index>=RDPD_TILE_COUNT)return;
+ tile_bounds(index,&x,&y,&w,&h);
+ for(row=0;row<h;row++)
+  memcpy(previous+(size_t)(y+row)*RDPD_WIDTH+x,
+         framebuffer+(size_t)(y+row)*RDPD_WIDTH+x,
+         (size_t)w*sizeof(uint32_t));
+ valid[index]=1;
+}
+
 
 static void w16(unsigned char *p, unsigned v)
 {
@@ -42,10 +79,7 @@ int rdpd_build_bitmap_tile(unsigned index, unsigned char *out,
     size_t pixels,share_len,user_len,total,pos;
     if (!out || !used || index>=RDPD_TILE_COUNT) return -1;
     init_framebuffer();
-    x=(index%RDPD_TILES_X)*RDPD_TILE_WIDTH;
-    y=(index/RDPD_TILES_X)*RDPD_TILE_HEIGHT;
-    w=RDPD_WIDTH-x<RDPD_TILE_WIDTH?RDPD_WIDTH-x:RDPD_TILE_WIDTH;
-    h=RDPD_HEIGHT-y<RDPD_TILE_HEIGHT?RDPD_HEIGHT-y:RDPD_TILE_HEIGHT;
+    tile_bounds(index,&x,&y,&w,&h);
     pixels=(size_t)w*h*4;
     /* Share Data header (18), Update (4), Bitmap rectangle (18). */
     share_len=18+4+18+pixels;

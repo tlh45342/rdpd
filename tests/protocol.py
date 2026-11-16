@@ -135,20 +135,32 @@ try:
                  (0x9000).to_bytes(2,"little") +
                  (390).to_bytes(2,"little") + (340).to_bytes(2,"little"))
         s.sendall(share_data(28,(1).to_bytes(2,"little")+bytes(2)+mouse))
-        refreshed = [receive_tpkt(s) for _ in range(384)]
+        # Dirty-tile transport: updates include only changed 64x32 tiles.
+        refreshed = []
+        s.settimeout(.35)
+        try:
+            while True:
+                refreshed.append(receive_tpkt(s))
+        except socket.timeout:
+            pass
+        finally:
+            s.settimeout(4)
+        assert 0 < len(refreshed) < 384, len(refreshed)
         assert all(f[7] == 0x68 and f[15+14] == 2 for f in refreshed)
         def pixel_at(frames,x,y):
-            tile=(y//32)*16+(x//64)
-            share=frames[tile][15:]
-            rect=share[22:40]
-            left=int.from_bytes(rect[0:2],"little")
-            top=int.from_bytes(rect[2:4],"little")
-            width=int.from_bytes(rect[8:10],"little")
-            height=int.from_bytes(rect[10:12],"little")
-            off=40+((top+height-1-y)*width+x-left)*4
-            return int.from_bytes(share[off:off+4],"little")
+            for frame in frames:
+                share=frame[15:]
+                rect=share[22:40]
+                left=int.from_bytes(rect[0:2],"little")
+                top=int.from_bytes(rect[2:4],"little")
+                width=int.from_bytes(rect[8:10],"little")
+                height=int.from_bytes(rect[10:12],"little")
+                if left<=x<left+width and top<=y<top+height:
+                    off=40+((top+height-1-y)*width+x-left)*4
+                    return int.from_bytes(share[off:off+4],"little")
+            raise AssertionError("changed pixel absent from dirty update")
         assert pixel_at(refreshed,400,340)==0xff0000, "second window button did not change color"
-        print("PASS: mouse click changes button pixels and triggers redraw")
+        print(f"PASS: mouse click sends {len(refreshed)} dirty tiles, not 384")
         # Diagnostic only: server should accept a well-framed 335-byte SendDataRequest.
         print("PASS: sent 335-byte MCS SendDataRequest diagnostic fixture")
     print("PASS: MCS Connect-Initial framed packet received")
