@@ -1,0 +1,88 @@
+#include "wm.h"
+#include <string.h>
+/* Theme values are RGB565. Frame layout is data, never application logic. */
+static const wm_theme themes[WM_THEME_COUNT]={
+ {"classic",0x0000,0x19a7,0xffff,0xce79,0x0000,0xce79,4,38,1,0},
+ {"x11",0x39e7,0x2945,0xffff,0xd69a,0x0000,0xbdf7,3,25,3,0},
+ {"win95",0xc618,0x0010,0xffff,0xc618,0x7bef,0xc618,4,27,3,0},
+ {"win10",0xf7de,0x2190,0xffff,0xffff,0x9cf3,0xf7de,1,32,3,0},
+ {"win11",0xf7de,0xdefb,0x2104,0xffff,0xc638,0xf7de,2,36,3,0},
+ {"mac",0xe71c,0xe71c,0x2104,0xffff,0xad55,0xf800,2,32,3,1}
+};
+const wm_theme *wm_theme_get(wm_theme_id id)
+{
+ if ((unsigned)id>=WM_THEME_COUNT) return &themes[WM_THEME_CLASSIC];
+ return &themes[id];
+}
+int wm_theme_parse(const char *name,wm_theme_id *out)
+{
+ unsigned i;
+ if (!name || !out) return 0;
+ for(i=0;i<WM_THEME_COUNT;i++)
+  if(strcmp(name,themes[i].name)==0) {*out=(wm_theme_id)i;return 1;}
+ return 0;
+}
+void wm_init(wm *m,gfx_surface *surface,wm_theme_id theme)
+{
+ if(!m) return;
+ memset(m,0,sizeof(*m));
+ m->surface=surface;
+ m->theme=(unsigned)theme<WM_THEME_COUNT?theme:WM_THEME_CLASSIC;
+ m->focused=-1;
+}
+wm_window *wm_window_create(wm *m,int x,int y,int width,int height,const char *title,wm_click_fn click,void *userdata)
+{
+ wm_window *w;
+ if(!m || m->count>=WM_MAX_WINDOWS || width<=0 || height<=0) return 0;
+ w=&m->windows[m->count++];
+ w->x=x;w->y=y;w->width=width;w->height=height;
+ w->title=title;w->click=click;w->userdata=userdata;w->visible=1;
+ m->focused=(int)m->count-1;
+ return w;
+}
+int wm_hit_test(const wm *m,int x,int y)
+{
+ int i;
+ if(!m) return -1;
+ for(i=(int)m->count-1;i>=0;i--) {
+  const wm_window *w=&m->windows[i];
+  if(w->visible && x>=w->x && y>=w->y &&
+     x-w->x<w->width && y-w->y<w->height) return i;
+ }
+ return -1;
+}
+int wm_mouse_down(wm *m,int x,int y)
+{
+ int i=wm_hit_test(m,x,y);
+ wm_window *w;
+ if(i<0) return 0;
+ m->focused=i;
+ w=&m->windows[i];
+ if(w->click) w->click(w,x-w->x,y-w->y,w->userdata);
+ return 1;
+}
+void wm_draw_window(wm *m,const wm_window *w)
+{
+ const wm_theme *t;
+ int i,cy,control_x;
+ if(!m || !m->surface || !w || !w->visible) return;
+ t=wm_theme_get(m->theme);
+ gfx_rect(m->surface,w->x,w->y,w->width,w->height,t->frame);
+ gfx_rect(m->surface,w->x+t->border_width,w->y+t->border_width,
+  w->width-2*t->border_width,w->height-2*t->border_width,t->body);
+ gfx_rect(m->surface,w->x+t->border_width,w->y+t->border_width,
+  w->width-2*t->border_width,t->title_height,t->title);
+ gfx_text(m->surface,w->x+t->border_width+(t->controls_left?85:15),w->y+t->border_width+10,w->title,t->title_text);
+ cy=w->y+t->border_width+7;
+ for(i=0;i<t->control_count;i++) {
+  control_x=t->controls_left?w->x+12+i*22:w->x+w->width-22-i*22;
+  gfx_rect(m->surface,control_x,cy,14,14,
+   t->controls_left?(i==0?0xf800:(i==1?0xffc0:0x07e0)):t->control);
+ }
+}
+void wm_draw(wm *m)
+{
+ unsigned i;
+ if(!m) return;
+ for(i=0;i<m->count;i++) wm_draw_window(m,&m->windows[i]);
+}
