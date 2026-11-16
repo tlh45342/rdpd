@@ -19,7 +19,7 @@ $(ARBITRATOR): src/session_arbitrator.c src/ipc.c src/ipc_transport.c src/sessio
 $(TARGET): $(SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(SOURCES) -o $@ $(LDLIBS)
 clean:
-	$(RM) session_arbitrator session_arbitrator.exe rdpd rdpd.exe test_gfx test_gfx.exe test_wm test_wm.exe test_composition test_composition.exe test_controls test_controls.exe test_widgets test_widgets.exe test_apps test_apps.exe test_session test_session.exe test_desktop_input test_desktop_input.exe test_mac_icons test_mac_icons.exe test_color32 test_color32.exe test_log test_log.exe test_ipc test_ipc.exe
+	$(RM) session_arbitrator session_arbitrator.exe rdpd rdpd.exe test_gfx test_gfx.exe test_wm test_wm.exe test_composition test_composition.exe test_controls test_controls.exe test_widgets test_widgets.exe test_apps test_apps.exe test_session test_session.exe test_desktop_input test_desktop_input.exe test_mac_icons test_mac_icons.exe test_color32 test_color32.exe test_log test_log.exe test_ipc test_ipc.exe test_outline test_outline.exe
 test: all
 	python tests/test_arbitrator.py
 	python tests/smoke.py
@@ -62,3 +62,6 @@ test: all
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_ipc.c src/ipc.c -o test_ipc$(EXEEXT)
 	./test_ipc$(EXEEXT)
 	$(RM) test_ipc$(EXEEXT)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_outline.c src/wm.c src/gfx.c -o test_outline$(EXEEXT)
+	./test_outline$(EXEEXT)
+	$(RM) test_outline$(EXEEXT)

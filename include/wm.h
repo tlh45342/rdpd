@@ -31,6 +31,7 @@ typedef struct wm {
  unsigned z_order[WM_MAX_WINDOWS];
  int focused;
  int pointer_window, pointer_mode, pointer_x, pointer_y;
+ int outline_drag, outline_x, outline_y;
  wm_theme_id theme;
 } wm;
 const wm_theme *wm_theme_get(wm_theme_id id);
@@ -43,6 +44,7 @@ int wm_mouse_down(wm *manager,int x,int y);
 int wm_pointer_down(wm *manager,int x,int y);
 int wm_pointer_move(wm *manager,int x,int y);
 void wm_pointer_up(wm *manager);
+void wm_set_outline_drag(wm *manager,int enabled);
 void wm_draw_window(wm *manager,const wm_window *window);
 void wm_window_set_paint(wm_window *window,wm_paint_fn paint);
 void wm_window_set_close(wm_window *window,wm_close_fn callback);

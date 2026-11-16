@@ -13,6 +13,7 @@
 #include <time.h>
 #endif
 #include <stdlib.h>
+#include <string.h>
 
 /* Application state stays outside WM. Painting uses window-local surfaces. */
 static gfx_surface *canvas;
@@ -76,6 +77,9 @@ void rdpd_desktop_set_surface(gfx_surface *surface)
  main_button=widget_button(85,105,260,54,"CLICK ME","CLICKED",0x3a8e,0x07e0);
  second_button=widget_button(30,75,160,44,"PRESS ME","ACTIVE",0x2190,0xf800);
  session_init(&current_session,surface,theme);
+ { const char *drag=getenv("RDPD_DRAG_MODE");
+   wm_set_outline_drag(&manager,!drag || strcmp(drag,"live")!=0);
+ }
  icon_selected=0;icon_last_click=0;
  main_window=wm_window_create(&manager,75,70,530,395,
                               "RDPD DESKTOP",main_click,0);
@@ -184,7 +188,11 @@ int rdpd_desktop_pointer_at(unsigned x,unsigned y,int kind,uint64_t now_ms)
   }
  }
  else if(kind==2) changed=session_pointer(&current_session,(int)x,(int)y,kind);
- else if(kind==3) (void)session_pointer(&current_session,(int)x,(int)y,kind);
+ else if(kind==3) {
+  int dragging=manager.pointer_mode!=0;
+  (void)session_pointer(&current_session,(int)x,(int)y,kind);
+  if(dragging)changed=1;
+ }
  if(changed || clicked!=before || second_clicked!=second_before) {
   rdpd_desktop_draw();return 1;
  }

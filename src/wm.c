@@ -31,6 +31,7 @@ void wm_init(wm *m,gfx_surface *surface,wm_theme_id theme)
  m->theme=(unsigned)theme<WM_THEME_COUNT?theme:WM_THEME_CLASSIC;
  m->focused=-1;
  m->pointer_window=-1;
+ m->outline_drag=0;
 }
 wm_window *wm_window_create(wm *m,int x,int y,int width,int height,const char *title,wm_click_fn click,void *userdata)
 {
@@ -193,6 +194,7 @@ int wm_pointer_down(wm *m,int x,int y)
   return 1;
  }
  m->pointer_window=i;m->pointer_x=x;m->pointer_y=y;
+ m->outline_x=w->x;m->outline_y=w->y;
  return 1;
 }
 int wm_pointer_move(wm *m,int x,int y)
@@ -205,7 +207,11 @@ int wm_pointer_move(wm *m,int x,int y)
  if(!dx && !dy) return 0;
  if(w->maximized) return 0;
  if(m->pointer_mode==1) {
-  w->x+=dx;w->y+=dy;
+  if(m->outline_drag) {
+   m->outline_x+=dx;m->outline_y+=dy;
+  } else {
+   w->x+=dx;w->y+=dy;
+  }
  } else {
   int nw=w->width+dx,nh=w->height+dy;
   if(nw<120) nw=120;
@@ -218,7 +224,32 @@ int wm_pointer_move(wm *m,int x,int y)
 void wm_pointer_up(wm *m)
 {
  if(!m) return;
+ if(m->outline_drag && m->pointer_mode==1 && m->pointer_window>=0) {
+  wm_window *w=&m->windows[m->pointer_window];
+  if(!w->closed && w->visible) {
+   w->x=m->outline_x;w->y=m->outline_y;
+  }
+ }
  m->pointer_window=-1;m->pointer_mode=0;
+}
+void wm_set_outline_drag(wm *m,int enabled)
+{
+ if(m) m->outline_drag=enabled!=0;
+}
+static void wm_draw_outline(wm *m)
+{
+ const wm_window *w;
+ int x,y,width,height;
+ uint32_t color=0x00ffffff;
+ if(!m || !m->surface || !m->outline_drag ||
+    m->pointer_mode!=1 || m->pointer_window<0)return;
+ w=&m->windows[m->pointer_window];
+ if(!w->visible || w->closed)return;
+ x=m->outline_x;y=m->outline_y;width=w->width;height=w->height;
+ gfx_rect_rgb(m->surface,x,y,width,2,color);
+ gfx_rect_rgb(m->surface,x,y+height-2,width,2,color);
+ gfx_rect_rgb(m->surface,x,y,2,height,color);
+ gfx_rect_rgb(m->surface,x+width-2,y,2,height,color);
 }
 void wm_window_set_paint(wm_window *w,wm_paint_fn paint)
 {
@@ -290,4 +321,5 @@ void wm_draw(wm *m)
  unsigned i;
  if(!m) return;
  for(i=0;i<m->count;i++) wm_draw_window(m,&m->windows[m->z_order[i]]);
+ wm_draw_outline(m);
 }
